@@ -218,8 +218,9 @@ function partCard(p) {
   const title = [p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar';
   const subtitle = [p.part_type_es || p.part_type_en, p.tractor_brand].filter(hasValue).join(' — ');
   const st = STATUS_INFO[p.status] || STATUS_INFO.pending;
-  const thumb = p.photos?.[0]
-    ? `<img src="/uploads/${esc(p.photos[0].filename)}" alt="" loading="lazy">`
+  const thumbSrc = p.photos?.[0]?.thumbnail || p.photos?.[0]?.filename;
+  const thumb = thumbSrc
+    ? `<img src="/uploads/${esc(thumbSrc)}" alt="" loading="lazy">`
     : '<span class="no-photo">📷</span>';
   const meta = [
     hasValue(p.measurement) ? p.measurement : '',

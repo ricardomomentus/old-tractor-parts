@@ -88,7 +88,12 @@ export function apiRouter(db) {
 
   const getPart = (id) => {
     const part = db.prepare('SELECT * FROM parts WHERE id = ?').get(id);
-    if (part) part.photos = db.prepare('SELECT * FROM photos WHERE part_id = ? ORDER BY sort_order').all(part.id);
+    if (part) {
+      part.photos = db.prepare('SELECT * FROM photos WHERE part_id = ? ORDER BY sort_order').all(part.id);
+      for (const ph of part.photos) {
+        ph.thumbnail = `thumb_${ph.filename}`;
+      }
+    }
     return part;
   };
 
@@ -202,9 +207,16 @@ export function apiRouter(db) {
       );
       const savedPaths = [];
       for (let i = 0; i < images.length; i++) {
-        const filename = `${partId}_${i}_${Date.now()}.jpg`;
+        const ts = Date.now();
+        const filename = `${partId}_${i}_${ts}.jpg`;
+        const thumbName = `thumb_${partId}_${i}_${ts}.jpg`;
         const filepath = join(UPLOADS_DIR, filename);
         writeFileSync(filepath, images[i]);
+        const thumbBuf = await sharp(images[i])
+          .resize(400, null, { withoutEnlargement: true })
+          .jpeg({ quality: 70 })
+          .toBuffer();
+        writeFileSync(join(UPLOADS_DIR, thumbName), thumbBuf);
         photoInsert.run(partId, filename, req.files[i].originalname, i);
         savedPaths.push(filepath);
       }
