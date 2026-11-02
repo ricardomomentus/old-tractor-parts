@@ -1,0 +1,25 @@
+# Secretos — NUNCA subir
+.env
+.env.*
+!.env.example
+
+# Imágenes originales (pesadas, no van a git)
+_imagenes_entrada/
+_imagenes_procesadas/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node
+node_modules/
+dist/
+
+# Runtime data (DB + uploads)
+data/
+
+# OS
+.DS_Store
+Thumbs.db

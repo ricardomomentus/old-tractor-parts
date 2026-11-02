@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Old Tractor Parts</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Old Tractor Parts</h1>
+    <button class="btn-logout" id="logout-btn" title="Cerrar sesión">Salir</button>
+  </header>
+
+  <nav id="tabs">
+    <button class="tab active" data-view="list">📋 Inventario</button>
+    <button class="tab" data-view="camera">📷 Nueva pieza</button>
+  </nav>
+
+  <!-- LIST VIEW -->
+  <section id="view-list" class="view active">
+    <div class="list-tools">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input id="search" class="field-input" type="search" inputmode="search"
+               enterkeyhint="search" placeholder="Buscar marca, número, tipo, ubicación…"
+               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+               aria-label="Buscar en inventario">
+        <button id="search-clear" class="btn-icon" type="button" aria-label="Borrar búsqueda" hidden>✕</button>
+      </div>
+      <div class="filter-chips" id="filter-chips" role="tablist" aria-label="Filtrar por estado">
+        <button class="chip active" data-filter="active" type="button">Activas <span class="chip-count"></span></button>
+        <button class="chip" data-filter="pending" type="button"><span class="dot dot-pending"></span>Pendientes <span class="chip-count"></span></button>
+        <button class="chip" data-filter="approved" type="button"><span class="dot dot-approved"></span>Aprobadas <span class="chip-count"></span></button>
+        <button class="chip" data-filter="posted" type="button"><span class="dot dot-posted"></span>Publicadas <span class="chip-count"></span></button>
+        <button class="chip" data-filter="sold" type="button"><span class="dot dot-sold"></span>Vendidas <span class="chip-count"></span></button>
+        <button class="chip" data-filter="all" type="button">Todas <span class="chip-count"></span></button>
+      </div>
+    </div>
+    <div id="parts-list"></div>
+    <div id="empty-state" class="empty" hidden>
+      <p>No hay piezas todavía</p>
+      <button class="btn btn-primary" onclick="switchView('camera')">📷 Agregar primera pieza</button>
+    </div>
+  </section>
+
+  <!-- CAMERA VIEW -->
+  <section id="view-camera" class="view">
+    <div class="camera-container">
+      <p class="hint">Toma de 1 a 4 fotos de la caja/etiqueta. Incluye todos los números visibles.</p>
+      <div id="photo-previews"></div>
+      <p id="photo-count" class="photo-count" hidden></p>
+
+      <div class="camera-actions" id="camera-actions">
+        <label class="btn btn-primary btn-lg" id="capture-btn">
+          📷 Tomar foto
+          <input type="file" accept="image/*" capture="environment" id="photo-input" hidden>
+        </label>
+        <label class="btn btn-outline" id="gallery-btn">
+          🖼 Elegir de la galería
+          <input type="file" accept="image/*" multiple id="gallery-input" hidden>
+        </label>
+        <button class="btn btn-success btn-lg" id="submit-btn" disabled>🤖 Identificar pieza</button>
+      </div>
+
+      <div id="upload-status" class="upload-status" role="status" aria-live="polite" hidden>
+        <div class="spinner spinner-lg"></div>
+        <p class="status-title" id="status-title">📤 Subiendo fotos…</p>
+        <div class="progress" id="progress"><div class="progress-bar" id="progress-bar"></div></div>
+        <p class="status-sub" id="status-sub"></p>
+      </div>
+
+      <div id="upload-error" class="upload-error" hidden>
+        <div class="alert alert-error" id="upload-error-msg" role="alert"></div>
+        <button class="btn btn-primary btn-lg" id="retry-upload-btn">🔄 Reintentar</button>
+        <button class="btn btn-outline" id="cancel-upload-btn">Cancelar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETAIL VIEW -->
+  <section id="view-detail" class="view">
+    <div id="detail-content"></div>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

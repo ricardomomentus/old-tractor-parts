@@ -1,0 +1,28 @@
+# Opcional: para Coolify con build pack "Docker Compose" (o para probar local).
+# Con el build pack "Dockerfile" no se usa este archivo: el volumen se configura
+# en Coolify → Persistent Storage → destino /app/data.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - PORT=${PORT:-3333}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - APP_USER=${APP_USER}
+      - APP_PASSWORD=${APP_PASSWORD}
+      - SESSION_DAYS=${SESSION_DAYS:-30}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - WHATSAPP_COUNTRY_CODE=${WHATSAPP_COUNTRY_CODE:-52}
+    expose:
+      - "3333"
+    volumes:
+      - otp-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3333/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  otp-data:

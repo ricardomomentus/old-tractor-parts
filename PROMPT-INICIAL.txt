@@ -1,0 +1,52 @@
+Proyecto nuevo: Old Tractor Parts. Háblame en español simple y con respuestas cortas. Primero enséñame un plan corto y espera mi visto bueno antes de programar.
+
+QUÉ ES
+Mi papá tuvo hace muchos años un negocio de partes de tractor. Quedaron unas 300 piezas viejas, casi todas en su caja original. Quiero un sitio para tenerlas inventariadas (identificar, guardar, encontrar) y publicarlas para venderlas. Lo uso desde el celular.
+
+DE DÓNDE SALE EL CÓDIGO
+Esta carpeta es una copia limpia de la app de René (`_autos`, repo `ricardomomentus/autopartes-app`): foto → IA → editar → aprobar → texto para publicar. Es una app APARTE: no toques `_autos` ni mezcles datos. Node, Express, sql.js, sharp, JS vanilla (`server.js`, `src/`, `public/`, `Dockerfile` para Coolify). Todavía no tiene git (haz `git init` local) ni `.env`.
+
+LLAVES
+Para probar en local copia `OPENROUTER_API_KEY` del `.env` de `_autos` a un `.env` aquí, sin mostrarme el valor. Pon `APP_USER` y una contraseña nueva, solo de esta app. El `.env` NUNCA va a git: antes de cada commit confirma que no está en el staging.
+
+CAMBIOS
+1. Nombre y marca: "Old Tractor Parts" en título, manifest, cookie, IndexedDB y `package.json`; quita lo que diga René, AutoPartes o "Avísale a Ricardo" si no aplica.
+
+2. Identificación en 3 pasos (`src/vision.js`), para gastar poco:
+   - Paso 1: una IA identifica (`VISION_MODEL`, por defecto `google/gemini-2.5-flash`, por OpenRouter).
+   - Paso 2: otra IA distinta verifica por su cuenta, viendo las mismas fotos (`VERIFY_MODEL`, por defecto `anthropic/claude-haiku-5.5`). Compara marca, número de parte y tipo de pieza, y guarda si coinciden o en qué difieren. En pantalla: "✅ Las 2 IA coinciden" o "⚠️ No coinciden: …".
+   - Paso 3, último recurso: Google Vision Web Detection (`GOOGLE_VISION_API_KEY`). Solo corre si las 2 IA no coinciden, si la confianza es baja o si no se encontró nada; y también con un botón "🔎 Buscar más detalles". Sin llave se salta sin error; todavía estoy activando su pago. El código actual lo corre siempre: cámbialo.
+   - Usa `max_tokens` amplio (2000): hay modelos que piensan antes de contestar y con poco regresan vacío.
+   - Revisa que el aviso de confianza baja funcione: el código compara con 'Low' y el prompt contesta "Baja".
+
+3. Prompt para piezas de tractor y equipo pesado viejos. Casi siempre es una foto de la CAJA, no de la pieza:
+   - Leer TODO lo de la etiqueta: marca (Hepolite, Glacier, AE, Michigan, Clevite, Zollner…), número de parte impreso, números escritos a mano, número OEM, medida (STD, .020), "For Ford", cantidad.
+   - Campos: marca de la pieza, para qué marca de tractor/motor, modelo/motor si se sabe, tipo de pieza en español y en inglés, número de parte, número OEM, medida, cantidad en la caja, condición.
+   - No inventar aplicaciones: si no se sabe a qué tractor le queda, dejarlo vacío. Si hay texto tachado o tapado, decirlo.
+   - Códigos Ford, solo como pista: C9NN6211 → 6211 es metal de biela; "C9" sería 1969 y "NN" tractor (esto último es de memoria, sin confirmar).
+   - Quita lo que solo sirve para carros (lado, tipo de luz).
+
+4. Campos de inventario: número de parte (buscable sin importar guiones ni espacios), número OEM, medida, cantidad, peso (libras), medidas de la caja (largo × ancho × alto, pulgadas), dónde está guardada (estante/caja), precio. Peso a mano con báscula, nada de adivinarlo. Botón "Copiar peso y medidas de otra igual", porque muchas cajas son iguales.
+
+5. Publicar: texto listo para copiar para eBay (título de máximo 80 caracteres con marca, número y tipo de pieza; descripción en inglés, condición "New Old Stock" si es nueva en caja) y para Facebook Marketplace. Sin conexión automática por ahora.
+
+6. Estados: pendiente → aprobada → publicada → vendida (ya existen); al vender, restar de la cantidad.
+
+FOTOS DE PRUEBA
+En `_imagenes_entrada/` (no van a git) hay 3 cajas reales:
+- `caja-glacier-B6495LC.jpg`: Glacier/AE, B6495LC STD "For Ford", a mano C9NN6211C-D. Es metal de biela (dibujito de media luna).
+- `caja-clevite-WS-499.jpg`: Michigan Clevite "Cylinder Sleeve" WS-499 (camisa de cilindro).
+- `caja-hepolite.jpg`: Hepolite (AE, Bradford, Inglaterra), camisa de cilindro, a mano "SU 51?8012", con datos tachados con plumón y una calcomanía encima del número.
+Ya busqué esos números en internet y no encontré a qué tractor o motor le quedan. Si la IA dice un modelo exacto, desconfía. Prueba las 3 con las IA de verdad y dime qué leyó cada una antes de seguir.
+
+CATÁLOGOS (siguiente etapa, no empieces hasta que yo tenga los escaneos)
+Tengo el catálogo de Mahle y el original de AE Engine Parts England, y los voy a mandar escanear completos. La idea: sacar de ahí una tabla número de parte → aplicación (tractor/motor) e intercambios, para que la app lo busque ahí y no adivine. Primero se prueba con unas 10 páginas para ver qué tan bien se leen las tablas. En cada dato mostrar de qué catálogo y página salió. Es para consulta interna: no publicar el catálogo ni copiarlo en los anuncios. Deja lugar en el diseño para esto, sin construirlo todavía.
+
+ANTES DE EMPEZAR PREGÚNTAME
+- ¿Las piezas están en Estados Unidos o en México? (cambia dónde vender y cómo enviar)
+
+REGLAS
+- Quiero medir mi tiempo: lo mínimo que funcione, sin extras.
+- Una sección por vez: me la enseñas en el navegador y esperas mi visto bueno.
+- No crees el repo en GitHub ni publiques en Coolify hasta que te lo pida; cuando toque, repo privado y disco aparte para `data/`, igual que la app de René.
+- Actualiza mi panel con el skill `panel-general`: crea la tarjeta de este proyecto.

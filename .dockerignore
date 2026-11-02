@@ -1,0 +1,22 @@
+# Secretos y datos — nunca dentro de la imagen
+.env
+.env.*
+data/
+_imagenes_*/
+
+# Dependencias (se instalan dentro de la imagen)
+node_modules/
+
+# Cosas de desarrollo
+.git/
+.claude/
+__pycache__/
+*.pyc
+venv/
+.venv/
+test_vision.py
+test_results.json
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
