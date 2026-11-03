@@ -133,18 +133,19 @@ function norm(s) {
 function matchesSearch(p, tokens) {
   if (!tokens.length) return true;
   // Search across all relevant fields, including part_number without dashes/spaces
-  const partNumClean = String(p.part_number || '').replace(/[-\s]/g, '').toLowerCase();
-  const oemClean = String(p.oem_number || '').replace(/[-\s]/g, '').toLowerCase();
+  const numFields = [p.part_number, p.oem_number, p.clevite_old, p.clevite_new, p.sealed_power, p.trw, p.zollner];
+  const numsCleaned = numFields.map(v => String(v || '').replace(/[-\s]/g, '').toLowerCase());
   const hay = norm([
     p.part_brand, p.tractor_brand, p.tractor_model,
     p.part_type_es, p.part_type_en, p.part_number, p.oem_number,
-    p.measurement, p.location, `#${p.id}`
+    p.measurement, p.location, `#${p.id}`,
+    p.clevite_old, p.clevite_new, p.sealed_power, p.trw, p.zollner,
+    p.oe_brand, p.application
   ].join(' '));
   return tokens.every(t => {
     if (hay.includes(t)) return true;
-    // Flexible part number search (ignore dashes/spaces)
     const tClean = t.replace(/[-\s]/g, '');
-    if (tClean.length >= 3 && (partNumClean.includes(tClean) || oemClean.includes(tClean))) return true;
+    if (tClean.length >= 3 && numsCleaned.some(n => n.includes(tClean))) return true;
     if (t.length >= 3) {
       for (const [es, en] of Object.entries(SEARCH_SYNONYMS)) {
         if (es.startsWith(t) && hay.includes(en)) return true;
@@ -642,6 +643,15 @@ function renderDetail(p) {
     ${textField('f-tractor_model', 'Modelo / motor', p.tractor_model, 'ej. 5000, 6600')}
     ${textField('f-measurement', 'Medida', p.measurement, 'ej. STD, .020')}
 
+    <h3 class="section-title">Cross-reference</h3>
+    ${textField('f-clevite_old', 'Clevite antiguo', p.clevite_old, 'ej. G-479')}
+    ${textField('f-clevite_new', 'Clevite nuevo', p.clevite_new, 'ej. 226-1361')}
+    ${textField('f-sealed_power', 'Sealed Power', p.sealed_power, 'ej. SL-2274')}
+    ${textField('f-trw', 'TRW', p.trw, 'ej. SA-296')}
+    ${textField('f-zollner', 'Zollner', p.zollner, 'ej. 19019B')}
+    ${textField('f-oe_brand', 'Marca OE', p.oe_brand, 'ej. Allis-Chalmers')}
+    ${textField('f-application', 'Aplicación', p.application, 'ej. 4 Cyl DA175 Diesel')}
+
     <h3 class="section-title">Inventario</h3>
     ${textField('f-quantity', 'Cantidad', p.quantity, 'ej. 4', { type: 'number', inputmode: 'numeric' })}
     <div class="field-group">
@@ -795,6 +805,13 @@ function readForm() {
     box_width_in: parseFloat(val('f-box_w')) || null,
     box_height_in: parseFloat(val('f-box_h')) || null,
     notes: val('f-notes'),
+    clevite_old: val('f-clevite_old'),
+    clevite_new: val('f-clevite_new'),
+    sealed_power: val('f-sealed_power'),
+    trw: val('f-trw'),
+    zollner: val('f-zollner'),
+    oe_brand: val('f-oe_brand'),
+    application: val('f-application'),
   };
 }
 

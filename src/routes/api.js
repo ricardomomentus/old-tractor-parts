@@ -36,10 +36,17 @@ function generateEbayPost(part) {
   if (isSet(part.part_brand)) lines.push(`Brand: ${part.part_brand}`);
   if (isSet(part.part_number)) lines.push(`Part Number: ${part.part_number}`);
   if (isSet(part.oem_number)) lines.push(`OEM Number: ${part.oem_number}`);
+  const xrefs = [
+    ['Clevite', part.clevite_old || part.clevite_new],
+    ['Sealed Power', part.sealed_power],
+    ['TRW', part.trw],
+  ].filter(([, v]) => isSet(v));
+  if (xrefs.length) lines.push(`Cross-ref: ${xrefs.map(([k, v]) => `${k} ${v}`).join(', ')}`);
   if (isSet(part.tractor_brand)) {
     const vehicle = [part.tractor_brand, part.tractor_model].filter(isSet).join(' ');
     lines.push(`For: ${vehicle}`);
   }
+  if (isSet(part.application)) lines.push(`Application: ${part.application}`);
   if (isSet(part.measurement)) lines.push(`Size: ${part.measurement}`);
   if (isSet(part.quantity)) lines.push(`Quantity: ${part.quantity}`);
   const isNos = String(part.condition || '').toLowerCase().includes('new');
@@ -252,6 +259,8 @@ export function apiRouter(db) {
       'quantity', 'condition', 'notes', 'price',
       'weight_lbs', 'box_length_in', 'box_width_in', 'box_height_in',
       'location',
+      'clevite_old', 'clevite_new', 'sealed_power', 'trw', 'zollner',
+      'oe_brand', 'application',
     ];
     const updates = [];
     const values = [];
@@ -384,6 +393,36 @@ export function apiRouter(db) {
     db.prepare('DELETE FROM photos WHERE part_id = ?').run(req.params.id);
     db.prepare('DELETE FROM parts WHERE id = ?').run(req.params.id);
     res.json({ ok: true });
+  });
+
+  router.post('/parts/import', (req, res) => {
+    const { parts: items } = req.body || {};
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Falta array de parts' });
+
+    const fields = [
+      'part_brand', 'tractor_brand', 'tractor_model',
+      'part_type_es', 'part_type_en', 'part_number',
+      'oem_number', 'measurement', 'quantity', 'condition', 'notes',
+      'location', 'clevite_old', 'clevite_new', 'sealed_power',
+      'trw', 'zollner', 'oe_brand', 'application',
+    ];
+    const imported = [];
+    for (const item of items) {
+      const cols = ['status'];
+      const vals = ['pending'];
+      for (const f of fields) {
+        if (item[f] != null && item[f] !== '') {
+          cols.push(f);
+          vals.push(f === 'quantity' ? parseInt(item[f], 10) || null : String(item[f]));
+        }
+      }
+      const placeholders = cols.map(() => '?').join(',');
+      const { lastInsertRowid } = db.prepare(
+        `INSERT INTO parts (${cols.join(',')}) VALUES (${placeholders})`
+      ).run(...vals);
+      imported.push(lastInsertRowid);
+    }
+    res.status(201).json({ imported: imported.length, ids: imported });
   });
 
   router.get('/stats', (req, res) => {

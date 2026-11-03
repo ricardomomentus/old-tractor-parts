@@ -64,9 +64,22 @@ export async function initDb(dbPath) {
       ai_error TEXT,
       verification_match INTEGER,
       verification_diffs TEXT,
-      vision_refs TEXT
+      vision_refs TEXT,
+      clevite_old TEXT,
+      clevite_new TEXT,
+      sealed_power TEXT,
+      trw TEXT,
+      zollner TEXT,
+      oe_brand TEXT,
+      application TEXT
     )
   `);
+
+  // Migration: add cross-reference columns if missing
+  const cols = _db.exec("PRAGMA table_info(parts)")[0]?.values.map(r => r[1]) || [];
+  for (const col of ['clevite_old', 'clevite_new', 'sealed_power', 'trw', 'zollner', 'oe_brand', 'application']) {
+    if (!cols.includes(col)) _db.run(`ALTER TABLE parts ADD COLUMN ${col} TEXT`);
+  }
 
   _db.run(`
     CREATE TABLE IF NOT EXISTS photos (
