@@ -191,7 +191,7 @@ export function apiRouter(db) {
     res.json(part);
   });
 
-  router.post('/parts', upload.array('photos', 4), async (req, res) => {
+  router.post('/parts', upload.array('photos', 3), async (req, res) => {
     try {
       if (!req.files?.length) return res.status(400).json({ error: 'Sube al menos 1 foto' });
 
@@ -260,7 +260,7 @@ export function apiRouter(db) {
       'weight_lbs', 'box_length_in', 'box_width_in', 'box_height_in',
       'location',
       'clevite_old', 'clevite_new', 'sealed_power', 'trw', 'zollner',
-      'oe_brand', 'application',
+      'oe_brand', 'application', 'custom_title', 'sku',
     ];
     const updates = [];
     const values = [];
@@ -404,7 +404,7 @@ export function apiRouter(db) {
       'part_type_es', 'part_type_en', 'part_number',
       'oem_number', 'measurement', 'quantity', 'condition', 'notes',
       'location', 'clevite_old', 'clevite_new', 'sealed_power',
-      'trw', 'zollner', 'oe_brand', 'application',
+      'trw', 'zollner', 'oe_brand', 'application', 'custom_title', 'sku',
     ];
     const imported = [];
     for (const item of items) {
@@ -437,8 +437,8 @@ export function apiRouter(db) {
   router.use((err, req, res, next) => {
     const messages = {
       LIMIT_FILE_SIZE: 'Una foto es demasiado grande (máximo 15 MB)',
-      LIMIT_FILE_COUNT: 'Máximo 4 fotos por pieza',
-      LIMIT_UNEXPECTED_FILE: 'Máximo 4 fotos por pieza',
+      LIMIT_FILE_COUNT: 'Máximo 3 fotos por pieza',
+      LIMIT_UNEXPECTED_FILE: 'Máximo 3 fotos por pieza',
     };
     const status = err.code in messages || err.message === 'Solo imágenes' ? 400 : 500;
     if (status === 500) console.error(err);

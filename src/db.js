@@ -71,13 +71,15 @@ export async function initDb(dbPath) {
       trw TEXT,
       zollner TEXT,
       oe_brand TEXT,
-      application TEXT
+      application TEXT,
+      custom_title TEXT,
+      sku TEXT
     )
   `);
 
-  // Migration: add cross-reference columns if missing
+  // Migration: add columns if missing
   const cols = _db.exec("PRAGMA table_info(parts)")[0]?.values.map(r => r[1]) || [];
-  for (const col of ['clevite_old', 'clevite_new', 'sealed_power', 'trw', 'zollner', 'oe_brand', 'application']) {
+  for (const col of ['clevite_old', 'clevite_new', 'sealed_power', 'trw', 'zollner', 'oe_brand', 'application', 'custom_title', 'sku']) {
     if (!cols.includes(col)) _db.run(`ALTER TABLE parts ADD COLUMN ${col} TEXT`);
   }
 

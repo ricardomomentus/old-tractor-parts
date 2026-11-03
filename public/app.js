@@ -140,7 +140,7 @@ function matchesSearch(p, tokens) {
     p.part_type_es, p.part_type_en, p.part_number, p.oem_number,
     p.measurement, p.location, `#${p.id}`,
     p.clevite_old, p.clevite_new, p.sealed_power, p.trw, p.zollner,
-    p.oe_brand, p.application
+    p.oe_brand, p.application, p.custom_title, p.sku
   ].join(' '));
   return tokens.every(t => {
     if (hay.includes(t)) return true;
@@ -216,7 +216,7 @@ function renderList() {
 }
 
 function partCard(p) {
-  const title = [p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar';
+  const title = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar');
   const subtitle = [p.part_type_es || p.part_type_en, p.tractor_brand].filter(hasValue).join(' — ');
   const st = STATUS_INFO[p.status] || STATUS_INFO.pending;
   const thumbSrc = p.photos?.[0]?.thumbnail || p.photos?.[0]?.filename;
@@ -291,7 +291,7 @@ window.clearSearch = function() {
 searchClear.addEventListener('click', () => { clearSearch(); searchInput.focus(); });
 
 // ---------- Camera / upload ----------
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 3;
 const submitBtn = document.getElementById('submit-btn');
 
 async function addPhotos(fileList) {
@@ -607,7 +607,7 @@ function renderDetail(p) {
       </div>
     </div>` : '';
 
-  const partTitle = [p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar';
+  const partTitle = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar');
   const partSubtitle = p.part_type_es || p.part_type_en || '';
 
   document.getElementById('detail-content').innerHTML = `
@@ -631,6 +631,10 @@ function renderDetail(p) {
         <details><summary>Detalle técnico</summary><code>${esc(p.ai_error)}</code></details>
       </div>` : ''}
     ${confLow && status === 'pending' && !p.ai_error ? '<div class="alert alert-warn">⚠️ La IA no está segura. Revisa los datos.</div>' : ''}
+
+    <h3 class="section-title">Producto</h3>
+    ${textField('f-custom_title', 'Título principal', p.custom_title, 'ej. G479 G-479 CLEVITE Sleeve Assembly / Kit de camisa')}
+    ${textField('f-sku', 'Clave / código', p.sku, 'ej. 1234')}
 
     <h3 class="section-title">Identificación</h3>
     ${textField('f-part_brand', 'Marca de la pieza', p.part_brand, 'ej. Hepolite, Glacier, Clevite')}
@@ -812,6 +816,8 @@ function readForm() {
     zollner: val('f-zollner'),
     oe_brand: val('f-oe_brand'),
     application: val('f-application'),
+    custom_title: val('f-custom_title'),
+    sku: val('f-sku'),
   };
 }
 
