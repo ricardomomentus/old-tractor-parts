@@ -1,6 +1,6 @@
 // Service worker — network-first. Nunca cachea la API ni respuestas de login.
-const CACHE = 'otp-v3';
-const ASSETS = ['/', '/style.css?v=2', '/app.js?v=2', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+const CACHE = 'otp-v4';
+const ASSETS = ['/', '/style.css?v=3', '/app.js?v=3', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
 // Solo se guardan respuestas buenas y que no sean un redirect al login
 function cacheable(res) {

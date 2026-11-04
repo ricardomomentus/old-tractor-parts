@@ -555,7 +555,7 @@ function renderDetail(p) {
         🖼 Gallery
         <input type="file" accept="image/*" multiple class="detail-gallery-input" hidden>
       </label>
-      <button class="btn btn-outline btn-sm" onclick="window.open('https://lens.google.com','_blank')">🔍 Google Lens</button>
+      <button class="btn btn-outline btn-sm" onclick="window.open('https://www.google.com/','_blank')">🔍 Google Lens</button>
       <span class="photo-count-hint">${photoCount} of ${MAX_PHOTOS} photos</span>
     </div>` : `<p class="photo-count-hint">${photoCount} of ${MAX_PHOTOS} photos (max)</p>`;
 
