@@ -7,13 +7,13 @@ async function api(url, opts) {
   const res = await fetch(url, { credentials: 'same-origin', ...opts });
   if (res.status === 401) {
     location.href = '/login';
-    throw new Error('Sesión vencida');
+    throw new Error('Session expired');
   }
   return res;
 }
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-  if (!confirm('¿Cerrar sesión?')) return;
+  if (!confirm('Log out?')) return;
   await fetch('/api/logout', { method: 'POST' }).catch(() => {});
   location.href = '/login';
 });
@@ -100,10 +100,10 @@ function switchView(view) {
 
 // ---------- Status ----------
 const STATUS_INFO = {
-  pending:  { label: 'Pendiente', badge: 'badge-pending' },
-  approved: { label: 'Aprobada',  badge: 'badge-approved' },
-  posted:   { label: 'Publicada', badge: 'badge-posted' },
-  sold:     { label: 'Vendida',   badge: 'badge-sold' },
+  pending:  { label: 'Pending',  badge: 'badge-pending' },
+  approved: { label: 'Approved', badge: 'badge-approved' },
+  posted:   { label: 'Posted',   badge: 'badge-posted' },
+  sold:     { label: 'Sold',     badge: 'badge-sold' },
 };
 
 const FILTERS = {
@@ -117,13 +117,11 @@ const FILTERS = {
 
 // ---------- Search ----------
 const SEARCH_SYNONYMS = {
-  'metal de biela': 'rod bearing', 'biela': 'rod bearing',
-  'metal de bancada': 'main bearing', 'bancada': 'main bearing',
-  'camisa': 'cylinder sleeve', 'camisa de cilindro': 'cylinder sleeve',
-  'anillos': 'piston ring', 'pistón': 'piston', 'piston': 'piston',
-  'bujes': 'bushing', 'buje': 'bushing',
-  'válvula': 'valve', 'guía': 'guide', 'sello': 'seal',
-  'empaque': 'gasket', 'junta': 'gasket',
+  'sleeve': 'cylinder sleeve', 'liner': 'cylinder sleeve',
+  'rod bearing': 'rod bearing', 'main bearing': 'main bearing',
+  'ring': 'piston ring', 'rings': 'piston ring',
+  'bushing': 'bushing', 'valve': 'valve',
+  'guide': 'guide', 'seal': 'seal', 'gasket': 'gasket',
 };
 
 function norm(s) {
@@ -172,12 +170,12 @@ async function loadParts() {
     renderList();
     window.scrollTo(0, listScrollY);
   } catch (err) {
-    if (err.message === 'Sesión vencida') return;
+    if (err.message === 'Session expired') return;
     list.innerHTML = `
       <div class="alert alert-error">
-        No se pudo cargar el inventario. ${navigator.onLine ? '' : 'Parece que no hay internet.'}
+        Could not load inventory. ${navigator.onLine ? '' : 'No internet connection.'}
       </div>
-      <button class="btn btn-outline" onclick="loadParts()">🔄 Reintentar</button>`;
+      <button class="btn btn-outline" onclick="loadParts()">🔄 Retry</button>`;
   }
 }
 
@@ -206,9 +204,9 @@ function renderList() {
 
   if (!shown.length) {
     list.innerHTML = tokens.length
-      ? `<div class="empty"><p>No encontré nada con "${esc(searchInput.value.trim())}"</p>
-           <button class="btn btn-outline" onclick="clearSearch()">✕ Borrar búsqueda</button></div>`
-      : '<div class="empty"><p>No hay piezas en este filtro</p></div>';
+      ? `<div class="empty"><p>Nothing found for "${esc(searchInput.value.trim())}"</p>
+           <button class="btn btn-outline" onclick="clearSearch()">✕ Clear search</button></div>`
+      : '<div class="empty"><p>No parts in this filter</p></div>';
     return;
   }
 
@@ -216,7 +214,7 @@ function renderList() {
 }
 
 function partCard(p) {
-  const title = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar');
+  const title = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Unidentified');
   const subtitle = [p.part_type_es || p.part_type_en, p.tractor_brand].filter(hasValue).join(' — ');
   const st = STATUS_INFO[p.status] || STATUS_INFO.pending;
   const thumbSrc = p.photos?.[0]?.thumbnail || p.photos?.[0]?.filename;
@@ -231,12 +229,12 @@ function partCard(p) {
 
   let lowConf = '';
   const confLow = ['baja', 'low'].includes(String(p.confidence || '').toLowerCase());
-  if (p.status === 'pending' && p.ai_error) lowConf = '<span class="card-badge badge-low">⚠️ Sin identificar</span>';
-  else if (p.status === 'pending' && confLow) lowConf = '<span class="card-badge badge-low">⚠️ Revisar</span>';
+  if (p.status === 'pending' && p.ai_error) lowConf = '<span class="card-badge badge-low">⚠️ Unidentified</span>';
+  else if (p.status === 'pending' && confLow) lowConf = '<span class="card-badge badge-low">⚠️ Review</span>';
 
   let verifyBadge = '';
-  if (p.verification_match === 1) verifyBadge = '<span class="card-badge badge-approved">✅ 2 IA</span>';
-  else if (p.verification_match === 0 && !p.ai_error) verifyBadge = '<span class="card-badge badge-low">⚠️ IA difieren</span>';
+  if (p.verification_match === 1) verifyBadge = '<span class="card-badge badge-approved">✅ 2 AI</span>';
+  else if (p.verification_match === 0 && !p.ai_error) verifyBadge = '<span class="card-badge badge-low">⚠️ AI differ</span>';
 
   return `
     <button class="part-card" data-id="${p.id}" type="button">
@@ -291,18 +289,18 @@ window.clearSearch = function() {
 searchClear.addEventListener('click', () => { clearSearch(); searchInput.focus(); });
 
 // ---------- Camera / upload ----------
-const MAX_PHOTOS = 3;
+const MAX_PHOTOS = 4;
 const submitBtn = document.getElementById('submit-btn');
 
 async function addPhotos(fileList) {
   const files = Array.from(fileList || []);
   const room = MAX_PHOTOS - selectedPhotos.length;
-  if (files.length > room) toast(`Máximo ${MAX_PHOTOS} fotos por pieza`, 'error');
+  if (files.length > room) toast(`Maximum ${MAX_PHOTOS} photos per part`, 'error');
   for (const file of files.slice(0, room)) {
     try {
       selectedPhotos.push(await compressImage(file));
     } catch {
-      toast(`No se pudo leer la foto "${file.name}"`, 'error');
+      toast(`Could not read photo "${file.name}"`, 'error');
     }
     renderPreviews();
   }
@@ -352,7 +350,7 @@ function renderPreviews() {
   const n = selectedPhotos.length;
   const count = document.getElementById('photo-count');
   count.hidden = n === 0;
-  count.textContent = n >= MAX_PHOTOS ? `${n} de ${MAX_PHOTOS} fotos (máximo)` : `${n} de ${MAX_PHOTOS} fotos`;
+  count.textContent = n >= MAX_PHOTOS ? `${n} of ${MAX_PHOTOS} photos (max)` : `${n} of ${MAX_PHOTOS} photos`;
   submitBtn.disabled = n === 0;
   document.getElementById('capture-btn').hidden = n >= MAX_PHOTOS;
   document.getElementById('gallery-btn').hidden = n >= MAX_PHOTOS;
@@ -381,19 +379,19 @@ function showUploadPhase(phase, pct = 0) {
   uploadUI.error.hidden = true;
   uploadUI.status.hidden = false;
   if (phase === 'upload') {
-    uploadUI.title.textContent = `📤 Subiendo fotos… ${Math.round(pct * 100)}%`;
+    uploadUI.title.textContent = `📤 Uploading photos… ${Math.round(pct * 100)}%`;
     uploadUI.progress.hidden = false;
     uploadUI.bar.style.width = `${Math.round(pct * 100)}%`;
-    uploadUI.sub.textContent = 'No cierres la app.';
+    uploadUI.sub.textContent = 'Don\'t close the app.';
   } else if (phase === 'identify' && !uploadTimer) {
-    uploadUI.title.textContent = '🤖 Identificando con 2 IA…';
+    uploadUI.title.textContent = '🤖 Identifying with 2 AI models…';
     uploadUI.progress.hidden = true;
     const started = Date.now();
     const tick = () => {
       const secs = Math.round((Date.now() - started) / 1000);
       uploadUI.sub.textContent = secs < 30
-        ? `⏱ ${secs} s — normalmente tarda de 10 a 30 segundos (2 modelos). No cierres la app.`
-        : `⏱ ${secs} s — está tardando más de lo normal, pero sigue trabajando…`;
+        ? `⏱ ${secs} s — usually takes 10-30 seconds (2 models). Don't close the app.`
+        : `⏱ ${secs} s — taking longer than usual, still working…`;
     };
     tick();
     uploadTimer = setInterval(tick, 1000);
@@ -436,7 +434,7 @@ function uploadPart(formData) {
 async function submitPhotos() {
   if (!selectedPhotos.length || uploading) return;
   if (!navigator.onLine) {
-    return showUploadError('📶 No hay internet. Tus fotos siguen aquí; intenta de nuevo cuando tengas señal.');
+    return showUploadError('📶 No internet. Your photos are still here; try again when you have signal.');
   }
   uploading = true;
   showUploadPhase('upload', 0);
@@ -450,13 +448,13 @@ async function submitPhotos() {
     renderPreviews();
     clearPendingPhotos();
     await openDetail(part.id);
-    if (part.ai_error) toast('La pieza se guardó, pero la IA no pudo identificarla', 'error');
-    else toast('Pieza identificada ✓ Revisa los datos');
+    if (part.ai_error) toast('Part saved, but AI could not identify it', 'error');
+    else toast('Part identified ✓ Review the data');
   } catch (err) {
-    if (err.message === 'Sesión vencida') return;
+    if (err.message === 'Session expired') return;
     const msg = {
-      NETWORK: '📶 No se pudo enviar: se cortó la conexión. Tus fotos siguen aquí; intenta de nuevo.',
-      TIMEOUT: '⏱ El servidor tardó demasiado en responder. Intenta de nuevo.',
+      NETWORK: '📶 Could not send: connection lost. Your photos are still here; try again.',
+      TIMEOUT: '⏱ Server took too long to respond. Try again.',
     }[err.message] || `❌ ${err.message}`;
     showUploadError(msg);
   } finally {
@@ -487,15 +485,15 @@ async function openDetail(id) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-detail').classList.add('active');
   } catch (err) {
-    if (err.message === 'Sesión vencida') return;
-    toast(err.message === 'Failed to fetch' ? 'Sin conexión. Intenta de nuevo.' : err.message, 'error');
+    if (err.message === 'Session expired') return;
+    toast(err.message === 'Failed to fetch' ? 'No connection. Try again.' : err.message, 'error');
   }
 }
 
 const NEXT_STEP = {
-  pending:  { status: 'approved', label: '✓ Aprobar', cls: 'btn-success', done: 'Aprobada ✓' },
-  approved: { status: 'posted', label: '📢 Marcar publicada', cls: 'btn-posted', done: 'Marcada como publicada 📢' },
-  posted:   { status: 'sold', label: '💰 Marcar vendida', cls: 'btn-primary', done: 'Marcada como vendida 💰' },
+  pending:  { status: 'approved', label: '✓ Approve', cls: 'btn-success', done: 'Approved ✓' },
+  approved: { status: 'posted', label: '📢 Mark as Posted', cls: 'btn-posted', done: 'Marked as Posted 📢' },
+  posted:   { status: 'sold', label: '💰 Mark as Sold', cls: 'btn-primary', done: 'Marked as Sold 💰' },
 };
 const PREV_STATUS = { approved: 'pending', posted: 'approved', sold: 'posted' };
 
@@ -505,7 +503,7 @@ function selectField(id, value, opts) {
   let v = hasValue(value) ? String(value) : '';
   const list = v && !opts.includes(v) ? [...opts, v] : opts;
   return `<select class="field-input" id="${id}">
-    <option value="" ${v ? '' : 'selected'}>— Sin definir —</option>
+    <option value="" ${v ? '' : 'selected'}>— Not set —</option>
     ${list.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}
   </select>`;
 }
@@ -539,151 +537,171 @@ function renderDetail(p) {
   const prev = PREV_STATUS[status];
 
   const photos = (p.photos || []).map((ph, i) =>
-    `<img src="/uploads/${esc(ph.filename)}" alt="foto de la pieza" onclick="openLightbox(${i})">`
+    `<div class="detail-photo-wrap">
+      <img src="/uploads/${esc(ph.filename)}" alt="part photo" onclick="openLightbox(${i})">
+      <button class="btn-icon photo-delete-btn" onclick="deletePhoto(${ph.id})" title="Remove photo">✕</button>
+    </div>`
   ).join('');
+
+  const photoCount = (p.photos || []).length;
+  const canAddPhotos = photoCount < MAX_PHOTOS;
+  const addPhotoHtml = canAddPhotos ? `
+    <div class="detail-add-photos">
+      <label class="btn btn-outline btn-sm">
+        📷 Take Photo
+        <input type="file" accept="image/*" capture="environment" class="detail-photo-input" hidden>
+      </label>
+      <label class="btn btn-outline btn-sm">
+        🖼 Gallery
+        <input type="file" accept="image/*" multiple class="detail-gallery-input" hidden>
+      </label>
+      <button class="btn btn-outline btn-sm" onclick="window.open('https://lens.google.com','_blank')">🔍 Google Lens</button>
+      <span class="photo-count-hint">${photoCount} of ${MAX_PHOTOS} photos</span>
+    </div>` : `<p class="photo-count-hint">${photoCount} of ${MAX_PHOTOS} photos (max)</p>`;
 
   // Verification badge
   let verifyHtml = '';
   if (p.verification_match === 1) {
-    verifyHtml = '<div class="alert" style="background:#16a34a22;border-color:#22c55e">✅ Las 2 IA coinciden</div>';
+    verifyHtml = '<div class="alert" style="background:#16a34a22;border-color:#22c55e">✅ Both AI models agree</div>';
   } else if (p.verification_match === 0 && p.verification_diffs) {
-    verifyHtml = `<div class="alert alert-warn">⚠️ Las IA difieren: ${esc(p.verification_diffs)}</div>`;
+    verifyHtml = `<div class="alert alert-warn">⚠️ AI models differ: ${esc(p.verification_diffs)}</div>`;
   }
 
   // eBay preview
   const ebayPreview = status !== 'pending' && p.ebay_title ? `
     <div class="fb-preview">
-      <h3>🏷️ Para eBay</h3>
+      <h3>🏷️ For eBay</h3>
       <div class="fb-field">
-        <span class="fb-label">Título (${p.ebay_title.length}/80):</span>
+        <span class="fb-label">Title (${p.ebay_title.length}/80):</span>
         <span class="fb-value" id="ebay-title-val">${esc(p.ebay_title)}</span>
         <button class="fb-copy-sm" onclick="copyField('ebay-title-val')">📋</button>
       </div>
       <div class="fb-field">
-        <span class="fb-label">Descripción:</span>
+        <span class="fb-label">Description:</span>
         <span class="fb-value" id="ebay-desc-val">${esc(p.ebay_description || '')}</span>
         <button class="fb-copy-sm" onclick="copyField('ebay-desc-val')">📋</button>
       </div>
-      <button class="btn btn-outline copy-btn" onclick="copyEbayPost()">📋 Copiar todo eBay</button>
+      <button class="btn btn-outline copy-btn" onclick="copyEbayPost()">📋 Copy all eBay</button>
     </div>` : '';
 
   // FB Marketplace preview
   const fbPhotos = (p.photos || []).map((ph, i) =>
     `<div class="fb-photo-wrap">
-      <img src="/uploads/${esc(ph.filename)}" alt="foto ${i + 1}">
-      <button class="fb-copy-sm fb-copy-img" onclick="copyImage('/uploads/${esc(ph.filename)}', this)">📋 Copiar foto</button>
+      <img src="/uploads/${esc(ph.filename)}" alt="photo ${i + 1}">
+      <button class="fb-copy-sm fb-copy-img" onclick="copyImage('/uploads/${esc(ph.filename)}', this)">📋 Copy photo</button>
     </div>`
   ).join('');
 
   const fbPreview = status !== 'pending' && p.fb_title ? `
     <div class="fb-preview">
-      <h3>📦 Para FB Marketplace</h3>
+      <h3>📦 For FB Marketplace</h3>
       <div class="fb-photos-row">${fbPhotos}</div>
       <div class="fb-field">
-        <span class="fb-label">Título:</span>
+        <span class="fb-label">Title:</span>
         <span class="fb-value" id="fb-title-val">${esc(p.fb_title)}</span>
         <button class="fb-copy-sm" onclick="copyField('fb-title-val')">📋</button>
       </div>
       ${p.price ? `<div class="fb-field">
-        <span class="fb-label">Precio:</span>
+        <span class="fb-label">Price:</span>
         <span class="fb-value" id="fb-price-val">$${formatPrice(p.price)}</span>
         <button class="fb-copy-sm" onclick="copyField('fb-price-val')">📋</button>
       </div>` : ''}
       <div class="fb-field">
-        <span class="fb-label">Descripción:</span>
+        <span class="fb-label">Description:</span>
         <span class="fb-value" id="fb-desc-val">${esc(p.fb_description || '')}</span>
         <button class="fb-copy-sm" onclick="copyField('fb-desc-val')">📋</button>
       </div>
-      <button class="btn btn-outline copy-btn" onclick="copyFbPost()">📋 Copiar todo FB</button>
+      <button class="btn btn-outline copy-btn" onclick="copyFbPost()">📋 Copy all FB</button>
     </div>` : '';
 
   // Shipping info
   const shipInfo = p.ship_weight_lbs ? `
     <div class="field-group">
-      <label class="field-label">📦 Para envío (+20%)</label>
+      <label class="field-label">📦 For shipping (+20%)</label>
       <div class="ship-summary">
         ${p.ship_weight_lbs ? `${p.ship_weight_lbs} lbs` : ''}
         ${p.ship_length_in ? ` · ${p.ship_length_in}×${p.ship_width_in}×${p.ship_height_in}"` : ''}
       </div>
     </div>` : '';
 
-  const partTitle = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Sin identificar');
+  const partTitle = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Unidentified');
   const partSubtitle = p.part_type_es || p.part_type_en || '';
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-top">
-      <button class="back-btn" onclick="goBack()">← Inicio</button>
+      <button class="back-btn" onclick="goBack()">← Back</button>
       <span class="card-badge ${st.badge}">${st.label}</span>
     </div>
     ${partSubtitle ? `<h2 class="detail-title">${esc(partSubtitle)}</h2>` : ''}
     <p class="detail-subtitle">${esc(partTitle)}</p>
     <div class="detail-photos">${photos}</div>
+    ${addPhotoHtml}
 
     ${verifyHtml}
 
-    ${prev ? `<button class="link-btn" onclick="savePart('${prev}')">↩ Regresar a "${STATUS_INFO[prev].label}"</button>` : ''}
+    ${prev ? `<button class="link-btn" onclick="savePart('${prev}')">↩ Back to "${STATUS_INFO[prev].label}"</button>` : ''}
     ${p.ai_error && status === 'pending' ? `
       <div class="alert alert-error ai-error">
-        <strong>⚠️ La IA no pudo identificar esta pieza.</strong>
+        <strong>⚠️ AI could not identify this part.</strong>
         <p>${esc(aiErrorText(p.ai_error))}</p>
-        <button class="btn btn-primary" id="retry-ai-btn" onclick="retryIdentify()">🔄 Reintentar identificación</button>
-        <p class="small">También puedes llenar los datos a mano.</p>
-        <details><summary>Detalle técnico</summary><code>${esc(p.ai_error)}</code></details>
+        <button class="btn btn-primary" id="retry-ai-btn" onclick="retryIdentify()">🔄 Retry identification</button>
+        <p class="small">You can also fill in the data manually.</p>
+        <details><summary>Technical detail</summary><code>${esc(p.ai_error)}</code></details>
       </div>` : ''}
-    ${confLow && status === 'pending' && !p.ai_error ? '<div class="alert alert-warn">⚠️ La IA no está segura. Revisa los datos.</div>' : ''}
+    ${confLow && status === 'pending' && !p.ai_error ? '<div class="alert alert-warn">⚠️ AI is not confident. Review the data.</div>' : ''}
 
-    <h3 class="section-title">Producto</h3>
-    ${textField('f-custom_title', 'Título principal', p.custom_title, 'ej. G479 G-479 CLEVITE Sleeve Assembly / Kit de camisa')}
-    ${textField('f-sku', 'Clave / código', p.sku, 'ej. 1234')}
+    <h3 class="section-title">Product</h3>
+    ${textField('f-custom_title', 'Main Title', p.custom_title, 'e.g. G479 G-479 CLEVITE Sleeve Assembly')}
+    ${textField('f-sku', 'SKU / Code', p.sku, 'e.g. 1234')}
 
-    <h3 class="section-title">Identificación</h3>
-    ${textField('f-part_brand', 'Marca de la pieza', p.part_brand, 'ej. Hepolite, Glacier, Clevite')}
-    ${textField('f-part_number', 'Nº de parte', p.part_number, 'ej. B6495LC')}
-    ${textField('f-oem_number', 'Nº OEM', p.oem_number, 'ej. C9NN6211C')}
-    ${textField('f-handwritten', 'Números a mano', p.handwritten_numbers, 'ej. C9NN6211C-D')}
-    ${textField('f-part_type_es', 'Tipo de pieza (español)', p.part_type_es, 'ej. Metal de biela')}
-    ${textField('f-part_type_en', 'Tipo de pieza (inglés)', p.part_type_en, 'ej. Rod bearing')}
-    ${textField('f-tractor_brand', 'Para marca de tractor', p.tractor_brand, 'ej. Ford')}
-    ${textField('f-tractor_model', 'Modelo / motor', p.tractor_model, 'ej. 5000, 6600')}
-    ${textField('f-measurement', 'Medida', p.measurement, 'ej. STD, .020')}
+    <h3 class="section-title">Identification</h3>
+    ${textField('f-part_brand', 'Part Brand', p.part_brand, 'e.g. Hepolite, Glacier, Clevite')}
+    ${textField('f-part_number', 'Part Number', p.part_number, 'e.g. B6495LC')}
+    ${textField('f-oem_number', 'OEM Number', p.oem_number, 'e.g. C9NN6211C')}
+    ${textField('f-handwritten', 'Handwritten Numbers', p.handwritten_numbers, 'e.g. C9NN6211C-D')}
+    ${textField('f-part_type_es', 'Part Type (Spanish)', p.part_type_es, 'e.g. Metal de biela')}
+    ${textField('f-part_type_en', 'Part Type (English)', p.part_type_en, 'e.g. Rod bearing')}
+    ${textField('f-tractor_brand', 'Tractor Brand', p.tractor_brand, 'e.g. Ford')}
+    ${textField('f-tractor_model', 'Model / Engine', p.tractor_model, 'e.g. 5000, 6600')}
+    ${textField('f-measurement', 'Measurement', p.measurement, 'e.g. STD, .020')}
 
     <h3 class="section-title">Cross-reference</h3>
-    ${textField('f-clevite_old', 'Clevite antiguo', p.clevite_old, 'ej. G-479')}
-    ${textField('f-clevite_new', 'Clevite nuevo', p.clevite_new, 'ej. 226-1361')}
-    ${textField('f-sealed_power', 'Sealed Power', p.sealed_power, 'ej. SL-2274')}
-    ${textField('f-trw', 'TRW', p.trw, 'ej. SA-296')}
-    ${textField('f-zollner', 'Zollner', p.zollner, 'ej. 19019B')}
-    ${textField('f-oe_brand', 'Marca OE', p.oe_brand, 'ej. Allis-Chalmers')}
-    ${textField('f-application', 'Aplicación', p.application, 'ej. 4 Cyl DA175 Diesel')}
+    ${textField('f-clevite_old', 'Clevite Old', p.clevite_old, 'e.g. G-479')}
+    ${textField('f-clevite_new', 'Clevite New', p.clevite_new, 'e.g. 226-1361')}
+    ${textField('f-sealed_power', 'Sealed Power', p.sealed_power, 'e.g. SL-2274')}
+    ${textField('f-trw', 'TRW', p.trw, 'e.g. SA-296')}
+    ${textField('f-zollner', 'Zollner', p.zollner, 'e.g. 19019B')}
+    ${textField('f-oe_brand', 'OE Brand', p.oe_brand, 'e.g. Allis-Chalmers')}
+    ${textField('f-application', 'Application', p.application, 'e.g. 4 Cyl DA175 Diesel')}
 
-    <h3 class="section-title">Inventario</h3>
-    ${textField('f-quantity', 'Cantidad', p.quantity, 'ej. 4', { type: 'number', inputmode: 'numeric' })}
+    <h3 class="section-title">Inventory</h3>
+    ${textField('f-quantity', 'Quantity', p.quantity, 'e.g. 4', { type: 'number', inputmode: 'numeric' })}
     <div class="field-group">
-      <label class="field-label" for="f-condition">Condición</label>
+      <label class="field-label" for="f-condition">Condition</label>
       ${selectField('f-condition', p.condition, COND_OPTS)}
     </div>
-    ${textField('f-location', 'Ubicación (estante/caja)', p.location, 'ej. Estante 3, Caja A')}
-    ${textField('f-price', 'Precio ($)', p.price, 'ej. 25', { type: 'number', inputmode: 'decimal', step: 'any' })}
+    ${textField('f-location', 'Location (shelf/box)', p.location, 'e.g. Shelf 3, Box A')}
+    ${textField('f-price', 'Price ($)', p.price, 'e.g. 25', { type: 'number', inputmode: 'decimal', step: 'any' })}
 
-    <h3 class="section-title">Peso y medidas de caja</h3>
-    <p class="hint" style="margin-bottom:8px">Peso con báscula, medidas en pulgadas. El envío se calcula +20% automático.</p>
-    <button class="btn btn-outline btn-sm" onclick="copyDimensionsFrom()" style="margin-bottom:12px">📋 Copiar peso y medidas de otra igual</button>
-    ${textField('f-weight', 'Peso (lbs)', p.weight_lbs, 'ej. 2.5', { type: 'number', inputmode: 'decimal', step: 'any' })}
+    <h3 class="section-title">Weight & Box Dimensions</h3>
+    <p class="hint" style="margin-bottom:8px">Weigh on scale, dimensions in inches. Shipping is auto-calculated +20%.</p>
+    <button class="btn btn-outline btn-sm" onclick="copyDimensionsFrom()" style="margin-bottom:12px">📋 Copy weight & dimensions from another part</button>
+    ${textField('f-weight', 'Weight (lbs)', p.weight_lbs, 'e.g. 2.5', { type: 'number', inputmode: 'decimal', step: 'any' })}
     <div class="dims-row">
-      ${textField('f-box_l', 'Largo"', p.box_length_in, 'L', { type: 'number', inputmode: 'decimal', step: 'any' })}
-      ${textField('f-box_w', 'Ancho"', p.box_width_in, 'W', { type: 'number', inputmode: 'decimal', step: 'any' })}
-      ${textField('f-box_h', 'Alto"', p.box_height_in, 'H', { type: 'number', inputmode: 'decimal', step: 'any' })}
+      ${textField('f-box_l', 'Length"', p.box_length_in, 'L', { type: 'number', inputmode: 'decimal', step: 'any' })}
+      ${textField('f-box_w', 'Width"', p.box_width_in, 'W', { type: 'number', inputmode: 'decimal', step: 'any' })}
+      ${textField('f-box_h', 'Height"', p.box_height_in, 'H', { type: 'number', inputmode: 'decimal', step: 'any' })}
     </div>
     ${shipInfo}
 
-    <h3 class="section-title">Notas</h3>
+    <h3 class="section-title">Notes</h3>
     <div class="field-group">
-      <label class="field-label" for="f-notes">Notas</label>
+      <label class="field-label" for="f-notes">Notes</label>
       <textarea class="field-input" id="f-notes" rows="3">${esc(p.notes || '')}</textarea>
     </div>
     ${p.all_visible_text ? `
     <div class="field-group">
-      <label class="field-label">Todo el texto visible (IA)</label>
+      <label class="field-label">All visible text (AI)</label>
       <div class="ai-text">${esc(p.all_visible_text)}</div>
     </div>` : ''}
     ${p.vision_refs ? `
@@ -691,36 +709,36 @@ function renderDetail(p) {
       <label class="field-label">Google Vision</label>
       <div class="ai-text">${esc(p.vision_refs)}</div>
     </div>` : ''}
-    <button class="btn btn-outline btn-sm" onclick="runVisionLookup()">🔎 Buscar más detalles (Google Vision)</button>
+    <button class="btn btn-outline btn-sm" onclick="runVisionLookup()">🔎 Look up details (Google Vision)</button>
 
     ${ebayPreview}
     ${fbPreview}
 
     <div class="detail-actions">
       ${next ? `<button class="btn ${next.cls}" onclick="savePart('${next.status}')">${next.label}</button>` : ''}
-      <button class="btn btn-outline" onclick="savePart()">💾 Guardar</button>
-      <button class="btn btn-danger btn-square" onclick="deletePart()" aria-label="Borrar pieza">🗑</button>
+      <button class="btn btn-outline" onclick="savePart()">💾 Save</button>
+      <button class="btn btn-danger btn-square" onclick="deletePart()" aria-label="Delete part">🗑</button>
     </div>
   `;
 }
 
 function aiErrorText(msg = '') {
-  if (/OPENROUTER_API_KEY/.test(msg)) return 'Falta configurar la llave de la IA en el servidor.';
-  if (/ 402/.test(msg)) return 'Se acabó el saldo de la IA (OpenRouter).';
-  if (/ 401| 403/.test(msg)) return 'La llave de la IA no es válida.';
-  if (/ 429/.test(msg)) return 'La IA está saturada. Espera un minuto y vuelve a intentar.';
-  if (/timeout|tard/i.test(msg)) return 'La IA tardó demasiado en responder. Vuelve a intentar.';
-  if (/conexi|fetch failed|ENOTFOUND|ECONN|EAI_AGAIN/i.test(msg)) return 'El servidor no pudo conectarse con la IA. Vuelve a intentar en un momento.';
-  return 'Hubo un error con la IA. Vuelve a intentar.';
+  if (/OPENROUTER_API_KEY/.test(msg)) return 'AI key not configured on the server.';
+  if (/ 402/.test(msg)) return 'AI credit ran out (OpenRouter).';
+  if (/ 401| 403/.test(msg)) return 'AI key is invalid.';
+  if (/ 429/.test(msg)) return 'AI is overloaded. Wait a minute and try again.';
+  if (/timeout|tard/i.test(msg)) return 'AI took too long to respond. Try again.';
+  if (/conexi|fetch failed|ENOTFOUND|ECONN|EAI_AGAIN/i.test(msg)) return 'Server could not connect to AI. Try again in a moment.';
+  return 'AI error. Try again.';
 }
 
 window.retryIdentify = async function() {
-  if (detailDirty && !confirm('La IA va a reemplazar lo que escribiste. ¿Continuar?')) return;
+  if (detailDirty && !confirm('AI will replace your edits. Continue?')) return;
   const btn = document.getElementById('retry-ai-btn');
   btn.disabled = true;
   let secs = 0;
-  btn.textContent = '🤖 Identificando… 0 s';
-  const timer = setInterval(() => { btn.textContent = `🤖 Identificando… ${++secs} s`; }, 1000);
+  btn.textContent = '🤖 Identifying… 0 s';
+  const timer = setInterval(() => { btn.textContent = `🤖 Identifying… ${++secs} s`; }, 1000);
   try {
     const res = await api(`/api/parts/${currentPart.id}/identify`, { method: 'POST' });
     const data = await res.json().catch(() => ({}));
@@ -730,14 +748,14 @@ window.retryIdentify = async function() {
       renderDetail(part);
       detailDirty = false;
     }
-    if (res.ok) toast('Pieza identificada ✓ Revisa los datos');
-    else toast(part ? 'La IA volvió a fallar' : (data.error || `Error ${res.status}`), 'error');
-    if (!part) { btn.disabled = false; btn.textContent = '🔄 Reintentar identificación'; }
+    if (res.ok) toast('Part identified ✓ Review the data');
+    else toast(part ? 'AI failed again' : (data.error || `Error ${res.status}`), 'error');
+    if (!part) { btn.disabled = false; btn.textContent = '🔄 Retry identification'; }
   } catch (err) {
-    if (err.message === 'Sesión vencida') return;
-    toast(err.message === 'Failed to fetch' ? 'Sin conexión. Intenta de nuevo.' : err.message, 'error');
+    if (err.message === 'Session expired') return;
+    toast(err.message === 'Failed to fetch' ? 'No connection. Try again.' : err.message, 'error');
     btn.disabled = false;
-    btn.textContent = '🔄 Reintentar identificación';
+    btn.textContent = '🔄 Retry identification';
   } finally {
     clearInterval(timer);
   }
@@ -754,15 +772,15 @@ window.runVisionLookup = async function() {
       currentPart = data.part;
       renderDetail(data.part);
     }
-    if (data.vision) toast(`Google Vision: ${data.vision.bestGuess || 'sin resultados'}`);
-    else toast(data.message || 'Sin resultados', 'error');
+    if (data.vision) toast(`Google Vision: ${data.vision.bestGuess || 'no results'}`);
+    else toast(data.message || 'No results', 'error');
   } catch (err) {
     toast(err.message, 'error');
   }
 };
 
 window.copyDimensionsFrom = async function() {
-  const fromId = prompt('Nº de pieza de donde copiar (ej. 1, 2, 3):');
+  const fromId = prompt('Part # to copy from (e.g. 1, 2, 3):');
   if (!fromId) return;
   try {
     const res = await api(`/api/parts/${currentPart.id}/copy-dimensions`, {
@@ -774,7 +792,7 @@ window.copyDimensionsFrom = async function() {
     if (!res.ok) throw new Error(data.error);
     currentPart = data;
     renderDetail(data);
-    toast('Peso y medidas copiados ✓');
+    toast('Weight & dimensions copied ✓');
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -783,7 +801,7 @@ window.copyDimensionsFrom = async function() {
 document.getElementById('detail-content').addEventListener('input', () => { detailDirty = true; });
 
 window.goBack = function() {
-  if (detailDirty && !confirm('Tienes cambios sin guardar. ¿Salir sin guardar?')) return;
+  if (detailDirty && !confirm('You have unsaved changes. Leave without saving?')) return;
   detailDirty = false;
   switchView('list');
 };
@@ -847,33 +865,33 @@ window.savePart = async function(nextStatus) {
     }
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
 
-    let msg = 'Guardado ✓';
+    let msg = 'Saved ✓';
     if (nextStatus) {
       msg = PREV_STATUS[currentPart.status] === nextStatus
-        ? `Regresada a "${STATUS_INFO[nextStatus].label}"`
-        : (NEXT_STEP[currentPart.status]?.done || `Estado: ${STATUS_INFO[nextStatus].label}`);
+        ? `Moved back to "${STATUS_INFO[nextStatus].label}"`
+        : (NEXT_STEP[currentPart.status]?.done || `Status: ${STATUS_INFO[nextStatus].label}`);
     }
     toast(msg);
     currentPart = data;
     renderDetail(data);
     detailDirty = false;
   } catch (err) {
-    if (err.message === 'Sesión vencida') return;
-    toast(err.message === 'Failed to fetch' ? 'Sin conexión: no se guardó. Intenta de nuevo.' : err.message, 'error');
+    if (err.message === 'Session expired') return;
+    toast(err.message === 'Failed to fetch' ? 'No connection: not saved. Try again.' : err.message, 'error');
     buttons.forEach(b => { b.disabled = false; });
   }
 };
 
 window.deletePart = async function() {
-  if (!confirm('¿Eliminar esta pieza y sus fotos? No se puede deshacer.')) return;
+  if (!confirm('Delete this part and its photos? This cannot be undone.')) return;
   try {
     const res = await api(`/api/parts/${currentPart.id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error ${res.status}`);
-    toast('Pieza eliminada');
+    toast('Part deleted');
     detailDirty = false;
     switchView('list');
   } catch (err) {
-    if (err.message !== 'Sesión vencida') toast('No se pudo eliminar: ' + err.message, 'error');
+    if (err.message !== 'Session expired') toast('Could not delete: ' + err.message, 'error');
   }
 };
 
@@ -895,7 +913,7 @@ window.copyField = async function(id) {
   await clipCopy(el.textContent.trim());
   const btn = el.nextElementSibling;
   if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = '📋'; }, 1500); }
-  toast('Copiado');
+  toast('Copied');
 };
 
 window.copyImage = async function(src, btn) {
@@ -904,11 +922,11 @@ window.copyImage = async function(src, btn) {
     const blob = await res.blob();
     const pngBlob = await createPngBlob(blob);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-    btn.textContent = '✓ Copiada';
-    toast('Foto copiada');
-    setTimeout(() => { btn.textContent = '📋 Copiar foto'; }, 2000);
+    btn.textContent = '✓ Copied';
+    toast('Photo copied');
+    setTimeout(() => { btn.textContent = '📋 Copy photo'; }, 2000);
   } catch {
-    toast('No se pudo copiar la foto. Descárgala y súbela manualmente.', 'error');
+    toast('Could not copy photo. Download and upload manually.', 'error');
   }
 };
 
@@ -1007,6 +1025,58 @@ window.downloadPhotos = async function() {
     if (err.message !== 'Sesión vencida') toast(err.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇️ Fotos'; }
+  }
+};
+
+// ---------- Add photos to existing part ----------
+document.getElementById('detail-content').addEventListener('change', async (e) => {
+  const isPhoto = e.target.classList.contains('detail-photo-input') || e.target.classList.contains('detail-gallery-input');
+  if (!isPhoto || !currentPart) return;
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
+
+  const currentCount = (currentPart.photos || []).length;
+  const room = MAX_PHOTOS - currentCount;
+  if (room <= 0) { toast(`Maximum ${MAX_PHOTOS} photos per part`, 'error'); return; }
+  if (files.length > room) toast(`Only adding ${room} photo(s) — max ${MAX_PHOTOS}`, 'error');
+
+  const toUpload = files.slice(0, room);
+  const formData = new FormData();
+  for (const file of toUpload) {
+    try { formData.append('photos', await compressImage(file)); }
+    catch { toast(`Could not read "${file.name}"`, 'error'); }
+  }
+  if (!formData.has('photos')) return;
+
+  toast('Uploading…');
+  try {
+    const res = await api(`/api/parts/${currentPart.id}/photos`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    currentPart = data;
+    renderDetail(data);
+    detailDirty = false;
+    toast('Photo(s) added ✓');
+  } catch (err) {
+    if (err.message !== 'Session expired') toast(err.message, 'error');
+  }
+});
+
+window.deletePhoto = async function(photoId) {
+  if (!confirm('Remove this photo?')) return;
+  try {
+    const res = await api(`/api/parts/${currentPart.id}/photos/${photoId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Error ${res.status}`); }
+    const data = await res.json();
+    currentPart = data;
+    renderDetail(data);
+    toast('Photo removed');
+  } catch (err) {
+    if (err.message !== 'Session expired') toast(err.message, 'error');
   }
 };
 

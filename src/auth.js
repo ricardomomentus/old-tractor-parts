@@ -149,7 +149,7 @@ export function authRoutes(app) {
     const okPass = safeEqual(String(password), APP_PASSWORD);
     if (!okUser || !okPass) {
       registerFailure(ip);
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({ error: 'Wrong username or password' });
     }
     failures.delete(ip);
     setSessionCookie(req, res);

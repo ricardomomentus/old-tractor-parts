@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -16,12 +16,12 @@
 <body>
   <header>
     <h1>Old Tractor Parts</h1>
-    <button class="btn-logout" id="logout-btn" title="Cerrar sesión">Salir</button>
+    <button class="btn-logout" id="logout-btn" title="Log out">Log out</button>
   </header>
 
   <nav id="tabs">
-    <button class="tab active" data-view="list">📋 Inventario</button>
-    <button class="tab" data-view="camera">📷 Nueva pieza</button>
+    <button class="tab active" data-view="list">📋 Inventory</button>
+    <button class="tab" data-view="camera">📷 New Part</button>
   </nav>
 
   <!-- LIST VIEW -->
@@ -30,57 +30,58 @@
       <div class="search-wrap">
         <span class="search-icon" aria-hidden="true">🔍</span>
         <input id="search" class="field-input" type="search" inputmode="search"
-               enterkeyhint="search" placeholder="Buscar marca, número, tipo, ubicación…"
+               enterkeyhint="search" placeholder="Search brand, number, type, location…"
                autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-               aria-label="Buscar en inventario">
-        <button id="search-clear" class="btn-icon" type="button" aria-label="Borrar búsqueda" hidden>✕</button>
+               aria-label="Search inventory">
+        <button id="search-clear" class="btn-icon" type="button" aria-label="Clear search" hidden>✕</button>
       </div>
-      <div class="filter-chips" id="filter-chips" role="tablist" aria-label="Filtrar por estado">
-        <button class="chip active" data-filter="active" type="button">Activas <span class="chip-count"></span></button>
-        <button class="chip" data-filter="pending" type="button"><span class="dot dot-pending"></span>Pendientes <span class="chip-count"></span></button>
-        <button class="chip" data-filter="approved" type="button"><span class="dot dot-approved"></span>Aprobadas <span class="chip-count"></span></button>
-        <button class="chip" data-filter="posted" type="button"><span class="dot dot-posted"></span>Publicadas <span class="chip-count"></span></button>
-        <button class="chip" data-filter="sold" type="button"><span class="dot dot-sold"></span>Vendidas <span class="chip-count"></span></button>
-        <button class="chip" data-filter="all" type="button">Todas <span class="chip-count"></span></button>
+      <div class="filter-chips" id="filter-chips" role="tablist" aria-label="Filter by status">
+        <button class="chip active" data-filter="active" type="button">Active <span class="chip-count"></span></button>
+        <button class="chip" data-filter="pending" type="button"><span class="dot dot-pending"></span>Pending <span class="chip-count"></span></button>
+        <button class="chip" data-filter="approved" type="button"><span class="dot dot-approved"></span>Approved <span class="chip-count"></span></button>
+        <button class="chip" data-filter="posted" type="button"><span class="dot dot-posted"></span>Posted <span class="chip-count"></span></button>
+        <button class="chip" data-filter="sold" type="button"><span class="dot dot-sold"></span>Sold <span class="chip-count"></span></button>
+        <button class="chip" data-filter="all" type="button">All <span class="chip-count"></span></button>
       </div>
     </div>
     <div id="parts-list"></div>
     <div id="empty-state" class="empty" hidden>
-      <p>No hay piezas todavía</p>
-      <button class="btn btn-primary" onclick="switchView('camera')">📷 Agregar primera pieza</button>
+      <p>No parts yet</p>
+      <button class="btn btn-primary" onclick="switchView('camera')">📷 Add first part</button>
     </div>
   </section>
 
   <!-- CAMERA VIEW -->
   <section id="view-camera" class="view">
     <div class="camera-container">
-      <p class="hint">Toma de 1 a 4 fotos de la caja/etiqueta. Incluye todos los números visibles.</p>
+      <p class="hint">Take 1 to 4 photos of the box/label. Include all visible numbers. Use Google Lens to identify, then add the screenshot.</p>
       <div id="photo-previews"></div>
       <p id="photo-count" class="photo-count" hidden></p>
 
       <div class="camera-actions" id="camera-actions">
         <label class="btn btn-primary btn-lg" id="capture-btn">
-          📷 Tomar foto
+          📷 Take Photo
           <input type="file" accept="image/*" capture="environment" id="photo-input" hidden>
         </label>
         <label class="btn btn-outline" id="gallery-btn">
-          🖼 Elegir de la galería
+          🖼 Choose from Gallery
           <input type="file" accept="image/*" multiple id="gallery-input" hidden>
         </label>
-        <button class="btn btn-success btn-lg" id="submit-btn" disabled>🤖 Identificar pieza</button>
+        <button class="btn btn-outline" id="lens-btn" onclick="window.open('https://lens.google.com','_blank')">🔍 Google Lens</button>
+        <button class="btn btn-success btn-lg" id="submit-btn" disabled>🤖 Identify Part</button>
       </div>
 
       <div id="upload-status" class="upload-status" role="status" aria-live="polite" hidden>
         <div class="spinner spinner-lg"></div>
-        <p class="status-title" id="status-title">📤 Subiendo fotos…</p>
+        <p class="status-title" id="status-title">📤 Uploading photos…</p>
         <div class="progress" id="progress"><div class="progress-bar" id="progress-bar"></div></div>
         <p class="status-sub" id="status-sub"></p>
       </div>
 
       <div id="upload-error" class="upload-error" hidden>
         <div class="alert alert-error" id="upload-error-msg" role="alert"></div>
-        <button class="btn btn-primary btn-lg" id="retry-upload-btn">🔄 Reintentar</button>
-        <button class="btn btn-outline" id="cancel-upload-btn">Cancelar</button>
+        <button class="btn btn-primary btn-lg" id="retry-upload-btn">🔄 Retry</button>
+        <button class="btn btn-outline" id="cancel-upload-btn">Cancel</button>
       </div>
     </div>
   </section>

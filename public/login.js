@@ -19,10 +19,10 @@ form.addEventListener('submit', async (e) => {
 
   const user = document.getElementById('user').value.trim();
   const password = pass.value;
-  if (!user || !password) return showError('Escribe usuario y contraseña');
+  if (!user || !password) return showError('Enter username and password');
 
   btn.disabled = true;
-  btn.textContent = 'Entrando…';
+  btn.textContent = 'Signing in…';
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
@@ -34,10 +34,10 @@ form.addEventListener('submit', async (e) => {
     location.replace('/');
   } catch (err) {
     showError(err.message === 'Failed to fetch'
-      ? 'Sin conexión. Revisa tu internet e intenta de nuevo.'
+      ? 'No connection. Check your internet and try again.'
       : err.message);
     btn.disabled = false;
-    btn.textContent = 'Entrar';
+    btn.textContent = 'Sign In';
   }
 });
 

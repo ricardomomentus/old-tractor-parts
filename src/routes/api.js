@@ -13,7 +13,7 @@ const upload = multer({
   limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Solo imágenes'));
+    else cb(new Error('Images only'));
   },
 });
 
@@ -61,25 +61,25 @@ function generateFbPost(part) {
   const titleParts = [
     part.part_brand,
     part.part_number,
-    part.part_type_es || part.part_type_en,
+    part.part_type_en || part.part_type_es,
     part.tractor_brand,
   ].filter(isSet);
   const title = titleParts.join(' ');
 
   const lines = [];
-  if (isSet(part.part_type_es)) lines.push(part.part_type_es);
-  if (isSet(part.part_brand)) lines.push(`Marca: ${part.part_brand}`);
-  if (isSet(part.part_number)) lines.push(`Nº parte: ${part.part_number}`);
+  if (isSet(part.part_type_en)) lines.push(part.part_type_en);
+  if (isSet(part.part_brand)) lines.push(`Brand: ${part.part_brand}`);
+  if (isSet(part.part_number)) lines.push(`Part #: ${part.part_number}`);
   if (isSet(part.oem_number)) lines.push(`OEM: ${part.oem_number}`);
   if (isSet(part.tractor_brand)) {
     const vehicle = [part.tractor_brand, part.tractor_model].filter(isSet).join(' ');
-    lines.push(`Para: ${vehicle}`);
+    lines.push(`For: ${vehicle}`);
   }
-  if (isSet(part.measurement)) lines.push(`Medida: ${part.measurement}`);
-  if (isSet(part.quantity)) lines.push(`Cantidad: ${part.quantity}`);
-  if (isSet(part.condition)) lines.push(`Condición: ${part.condition}`);
-  if (isSet(part.notes)) lines.push(`\nNotas: ${part.notes}`);
-  lines.push('\nManda mensaje para precio y detalles.');
+  if (isSet(part.measurement)) lines.push(`Size: ${part.measurement}`);
+  if (isSet(part.quantity)) lines.push(`Quantity: ${part.quantity}`);
+  if (isSet(part.condition)) lines.push(`Condition: ${part.condition}`);
+  if (isSet(part.notes)) lines.push(`\nNotes: ${part.notes}`);
+  lines.push('\nMessage for price and details.');
 
   return { title, description: lines.join('\n') };
 }
@@ -187,13 +187,13 @@ export function apiRouter(db) {
 
   router.get('/parts/:id', (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     res.json(part);
   });
 
-  router.post('/parts', upload.array('photos', 3), async (req, res) => {
+  router.post('/parts', upload.array('photos', 4), async (req, res) => {
     try {
-      if (!req.files?.length) return res.status(400).json({ error: 'Sube al menos 1 foto' });
+      if (!req.files?.length) return res.status(400).json({ error: 'Upload at least 1 photo' });
 
       const images = [];
       for (const file of req.files) {
@@ -204,7 +204,7 @@ export function apiRouter(db) {
             .jpeg({ quality: 80 })
             .toBuffer());
         } catch {
-          return res.status(400).json({ error: `No se pudo leer la foto "${file.originalname}". Intenta con otra.` });
+          return res.status(400).json({ error: `Could not read photo "${file.originalname}". Try another.` });
         }
       }
 
@@ -236,20 +236,87 @@ export function apiRouter(db) {
     }
   });
 
+  // Add photos to an existing part
+  router.post('/parts/:id/photos', upload.array('photos', 4), async (req, res) => {
+    try {
+      const part = getPart(req.params.id);
+      if (!part) return res.status(404).json({ error: 'Part not found' });
+
+      const currentCount = (part.photos || []).length;
+      const room = 4 - currentCount;
+      if (room <= 0) return res.status(400).json({ error: 'Maximum 4 photos per part' });
+      if (!req.files?.length) return res.status(400).json({ error: 'No photos uploaded' });
+
+      const filesToSave = req.files.slice(0, room);
+      const photoInsert = db.prepare(
+        'INSERT INTO photos (part_id, filename, original_name, sort_order) VALUES (?, ?, ?, ?)'
+      );
+
+      for (let i = 0; i < filesToSave.length; i++) {
+        const file = filesToSave[i];
+        let buffer;
+        try {
+          buffer = await sharp(file.buffer)
+            .rotate()
+            .resize(1200, null, { withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+        } catch {
+          return res.status(400).json({ error: `Could not read photo "${file.originalname}"` });
+        }
+
+        const ts = Date.now();
+        const sortOrder = currentCount + i;
+        const filename = `${part.id}_${sortOrder}_${ts}.jpg`;
+        const thumbName = `thumb_${part.id}_${sortOrder}_${ts}.jpg`;
+        writeFileSync(join(UPLOADS_DIR, filename), buffer);
+        const thumbBuf = await sharp(buffer)
+          .resize(400, null, { withoutEnlargement: true })
+          .jpeg({ quality: 70 })
+          .toBuffer();
+        writeFileSync(join(UPLOADS_DIR, thumbName), thumbBuf);
+        photoInsert.run(part.id, filename, file.originalname, sortOrder);
+      }
+
+      db.prepare("UPDATE parts SET updated_at = datetime('now') WHERE id = ?").run(part.id);
+      res.status(201).json(getPart(part.id));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete a single photo
+  router.delete('/parts/:id/photos/:photoId', (req, res) => {
+    const part = getPart(req.params.id);
+    if (!part) return res.status(404).json({ error: 'Part not found' });
+
+    const photo = db.prepare('SELECT * FROM photos WHERE id = ? AND part_id = ?').get(req.params.photoId, req.params.id);
+    if (!photo) return res.status(404).json({ error: 'Photo not found' });
+
+    const fp = join(UPLOADS_DIR, photo.filename);
+    if (existsSync(fp)) unlinkSync(fp);
+    const thumbFp = join(UPLOADS_DIR, `thumb_${photo.filename}`);
+    if (existsSync(thumbFp)) unlinkSync(thumbFp);
+
+    db.prepare('DELETE FROM photos WHERE id = ?').run(photo.id);
+    db.prepare("UPDATE parts SET updated_at = datetime('now') WHERE id = ?").run(part.id);
+    res.json(getPart(part.id));
+  });
+
   router.patch('/parts/:id', (req, res) => {
     const part = db.prepare('SELECT * FROM parts WHERE id = ?').get(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
 
     if (req.body._expected_updated_at && part.updated_at !== req.body._expected_updated_at) {
       const fresh = getPart(req.params.id);
       return res.status(409).json({
-        error: 'Alguien más editó esta pieza. Se recargaron los datos actuales.',
+        error: 'This part was edited elsewhere. Data reloaded.',
         part: fresh,
       });
     }
 
     if (req.body.status !== undefined && !STATUSES.includes(req.body.status)) {
-      return res.status(400).json({ error: `Estado inválido: ${req.body.status}` });
+      return res.status(400).json({ error: `Invalid status: ${req.body.status}` });
     }
 
     const fields = [
@@ -271,13 +338,13 @@ export function apiRouter(db) {
       if (['price', 'weight_lbs', 'box_length_in', 'box_width_in', 'box_height_in'].includes(f)) {
         v = v === '' || v === null ? null : Number(v);
         if (v !== null && (!Number.isFinite(v) || v < 0)) {
-          return res.status(400).json({ error: `Valor inválido para ${f}` });
+          return res.status(400).json({ error: `Invalid value for ${f}` });
         }
       }
       if (f === 'quantity') {
         v = v === '' || v === null ? null : parseInt(v, 10);
         if (v !== null && (!Number.isFinite(v) || v < 0)) {
-          return res.status(400).json({ error: 'Cantidad inválida' });
+          return res.status(400).json({ error: 'Invalid quantity' });
         }
       }
       updates.push(`${f} = ?`);
@@ -312,16 +379,16 @@ export function apiRouter(db) {
 
   router.post('/parts/:id/status', (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     const { status } = req.body || {};
-    if (!STATUSES.includes(status)) return res.status(400).json({ error: `Estado inválido: ${status}` });
+    if (!STATUSES.includes(status)) return res.status(400).json({ error: `Invalid status: ${status}` });
     setStatus(part, status);
     res.json(getPart(part.id));
   });
 
   router.post('/parts/batch/approve', (req, res) => {
     const { ids } = req.body;
-    if (!ids?.length) return res.status(400).json({ error: 'Falta ids' });
+    if (!ids?.length) return res.status(400).json({ error: 'Missing ids' });
     const results = [];
     for (const id of ids) {
       const part = getPart(id);
@@ -334,16 +401,16 @@ export function apiRouter(db) {
 
   router.post('/parts/:id/approve', (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     setStatus(part, 'approved');
     res.json(getPart(part.id));
   });
 
   router.post('/parts/:id/identify', async (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     const paths = part.photos.map(ph => join(UPLOADS_DIR, ph.filename)).filter(existsSync);
-    if (!paths.length) return res.status(400).json({ error: 'La pieza no tiene fotos' });
+    if (!paths.length) return res.status(400).json({ error: 'Part has no photos' });
     const error = await runIdentify(part.id, paths);
     if (error) return res.status(502).json({ error, part: getPart(part.id) });
     res.json(getPart(part.id));
@@ -352,11 +419,11 @@ export function apiRouter(db) {
   // Google Vision lookup — botón manual
   router.post('/parts/:id/vision', async (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     const paths = part.photos.map(ph => join(UPLOADS_DIR, ph.filename)).filter(existsSync);
-    if (!paths.length) return res.status(400).json({ error: 'La pieza no tiene fotos' });
+    if (!paths.length) return res.status(400).json({ error: 'Part has no photos' });
     const data = await googleVisionLookup(paths[0]);
-    if (!data) return res.status(200).json({ message: 'Google Vision no configurada o sin resultados', part: getPart(part.id) });
+    if (!data) return res.status(200).json({ message: 'Google Vision not configured or no results', part: getPart(part.id) });
     db.prepare("UPDATE parts SET vision_refs = ?, updated_at = datetime('now') WHERE id = ?")
       .run(data.entities.slice(0, 5).join(', '), part.id);
     res.json({ vision: data, part: getPart(part.id) });
@@ -365,11 +432,11 @@ export function apiRouter(db) {
   // Copy weight/dimensions from another part
   router.post('/parts/:id/copy-dimensions', (req, res) => {
     const part = getPart(req.params.id);
-    if (!part) return res.status(404).json({ error: 'No encontrada' });
+    if (!part) return res.status(404).json({ error: 'Not found' });
     const { from_id } = req.body;
-    if (!from_id) return res.status(400).json({ error: 'Falta from_id' });
+    if (!from_id) return res.status(400).json({ error: 'Missing from_id' });
     const source = db.prepare('SELECT weight_lbs, box_length_in, box_width_in, box_height_in FROM parts WHERE id = ?').get(from_id);
-    if (!source) return res.status(404).json({ error: 'Pieza origen no encontrada' });
+    if (!source) return res.status(404).json({ error: 'Source part not found' });
     db.prepare(`UPDATE parts SET
       weight_lbs = ?, box_length_in = ?, box_width_in = ?, box_height_in = ?,
       ship_weight_lbs = ?, ship_length_in = ?, ship_width_in = ?, ship_height_in = ?,
@@ -397,7 +464,7 @@ export function apiRouter(db) {
 
   router.post('/parts/import', (req, res) => {
     const { parts: items } = req.body || {};
-    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Falta array de parts' });
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Missing parts array' });
 
     const fields = [
       'part_brand', 'tractor_brand', 'tractor_model',
@@ -436,13 +503,13 @@ export function apiRouter(db) {
 
   router.use((err, req, res, next) => {
     const messages = {
-      LIMIT_FILE_SIZE: 'Una foto es demasiado grande (máximo 15 MB)',
-      LIMIT_FILE_COUNT: 'Máximo 3 fotos por pieza',
-      LIMIT_UNEXPECTED_FILE: 'Máximo 3 fotos por pieza',
+      LIMIT_FILE_SIZE: 'Photo too large (max 15 MB)',
+      LIMIT_FILE_COUNT: 'Maximum 4 photos per part',
+      LIMIT_UNEXPECTED_FILE: 'Maximum 4 photos per part',
     };
-    const status = err.code in messages || err.message === 'Solo imágenes' ? 400 : 500;
+    const status = err.code in messages || err.message === 'Images only' ? 400 : 500;
     if (status === 500) console.error(err);
-    res.status(status).json({ error: messages[err.code] || err.message || 'Error del servidor' });
+    res.status(status).json({ error: messages[err.code] || err.message || 'Server error' });
   });
 
   return router;
