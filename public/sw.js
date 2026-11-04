@@ -1,5 +1,5 @@
 // Service worker — network-first. Nunca cachea la API ni respuestas de login.
-const CACHE = 'otp-v1';
+const CACHE = 'otp-v2';
 const ASSETS = ['/', '/style.css', '/app.js', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
 // Solo se guardan respuestas buenas y que no sean un redirect al login
