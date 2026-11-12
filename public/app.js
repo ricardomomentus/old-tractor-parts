@@ -1,6 +1,20 @@
-// Service Worker
+// Service Worker + update banner
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      if (newSW) newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'activated') showUpdateBanner();
+      });
+    });
+  });
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') showUpdateBanner();
+  });
+}
+function showUpdateBanner() {
+  const b = document.getElementById('update-banner');
+  if (b) b.hidden = false;
 }
 
 async function api(url, opts) {

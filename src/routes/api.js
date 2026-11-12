@@ -22,14 +22,9 @@ const STATUSES = ['pending', 'approved', 'posted', 'sold'];
 const isSet = v => v != null && !['', 'unknown', 'n/a', 'na', 'none', 'desconocido'].includes(String(v).trim().toLowerCase());
 
 function generateEbayPost(part) {
-  const pieces = [
-    part.part_brand,
-    part.part_number,
-    part.part_type_en,
-    part.tractor_brand,
-    part.measurement,
-  ].filter(isSet);
-  const title = pieces.join(' ').slice(0, 80);
+  const title = isSet(part.custom_title)
+    ? part.custom_title.slice(0, 80)
+    : [part.part_brand, part.part_number, part.part_type_en, part.tractor_brand, part.measurement].filter(isSet).join(' ').slice(0, 80);
 
   const lines = [];
   if (isSet(part.part_type_en)) lines.push(part.part_type_en);
@@ -44,27 +39,26 @@ function generateEbayPost(part) {
   if (xrefs.length) lines.push(`Cross-ref: ${xrefs.map(([k, v]) => `${k} ${v}`).join(', ')}`);
   if (isSet(part.tractor_brand)) {
     const vehicle = [part.tractor_brand, part.tractor_model].filter(isSet).join(' ');
-    lines.push(`For: ${vehicle}`);
+    lines.push(`Fits: ${vehicle}`);
   }
   if (isSet(part.application)) lines.push(`Application: ${part.application}`);
   if (isSet(part.measurement)) lines.push(`Size: ${part.measurement}`);
   if (isSet(part.quantity)) lines.push(`Quantity: ${part.quantity}`);
   const isNos = String(part.condition || '').toLowerCase().includes('new');
-  lines.push(`Condition: ${isNos ? 'New Old Stock (NOS) — new part in original box' : (part.condition || 'See photos')}`);
+  lines.push(`Condition: ${isNos ? 'New Old Stock (NOS) - new part in original box' : (part.condition || 'See photos')}`);
   if (isSet(part.weight_lbs)) lines.push(`Weight: ${part.weight_lbs} lbs`);
+  if (isSet(part.ship_weight_lbs)) lines.push(`Shipping weight: ${part.ship_weight_lbs} lbs`);
+  if (isSet(part.ship_length_in)) lines.push(`Box: ${part.ship_length_in} x ${part.ship_width_in} x ${part.ship_height_in} in`);
+  lines.push('\nShips from San Diego, CA, USA. We ship worldwide via Pirate Ship (UPS rates).');
   if (isSet(part.notes)) lines.push(`\nNotes: ${part.notes}`);
 
   return { title, description: lines.join('\n') };
 }
 
 function generateFbPost(part) {
-  const titleParts = [
-    part.part_brand,
-    part.part_number,
-    part.part_type_en || part.part_type_es,
-    part.tractor_brand,
-  ].filter(isSet);
-  const title = titleParts.join(' ');
+  const title = isSet(part.custom_title)
+    ? part.custom_title
+    : [part.part_brand, part.part_number, part.part_type_en || part.part_type_es, part.tractor_brand].filter(isSet).join(' ');
 
   const lines = [];
   if (isSet(part.part_type_en)) lines.push(part.part_type_en);
@@ -73,13 +67,13 @@ function generateFbPost(part) {
   if (isSet(part.oem_number)) lines.push(`OEM: ${part.oem_number}`);
   if (isSet(part.tractor_brand)) {
     const vehicle = [part.tractor_brand, part.tractor_model].filter(isSet).join(' ');
-    lines.push(`For: ${vehicle}`);
+    lines.push(`Fits: ${vehicle}`);
   }
   if (isSet(part.measurement)) lines.push(`Size: ${part.measurement}`);
-  if (isSet(part.quantity)) lines.push(`Quantity: ${part.quantity}`);
-  if (isSet(part.condition)) lines.push(`Condition: ${part.condition}`);
-  if (isSet(part.notes)) lines.push(`\nNotes: ${part.notes}`);
-  lines.push('\nMessage for price and details.');
+  if (isSet(part.quantity)) lines.push(`Qty: ${part.quantity}`);
+  const isNos = String(part.condition || '').toLowerCase().includes('new');
+  if (isSet(part.condition)) lines.push(`Condition: ${isNos ? 'NOS (New Old Stock)' : part.condition}`);
+  lines.push('\nShips from San Diego, CA. Message for details.');
 
   return { title, description: lines.join('\n') };
 }
@@ -115,6 +109,7 @@ export function apiRouter(db) {
           quantity = ?, condition = ?, confidence = ?,
           all_visible_text = ?, notes = ?,
           verification_match = ?, verification_diffs = ?, vision_refs = ?,
+          custom_title = COALESCE(?, custom_title),
           ai_error = NULL, updated_at = datetime('now')
         WHERE id = ?
       `).run(
@@ -127,6 +122,7 @@ export function apiRouter(db) {
         r.verification_match ? 1 : 0,
         r.verification_diffs?.length ? r.verification_diffs.join(' | ') : null,
         r.vision_refs ?? null,
+        r.custom_title ?? null,
         partId
       );
       return null;

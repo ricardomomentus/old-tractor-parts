@@ -1,8 +1,7 @@
-// Service worker — network-first. Nunca cachea la API ni respuestas de login.
-const CACHE = 'otp-v4';
-const ASSETS = ['/', '/style.css?v=3', '/app.js?v=3', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+// Service worker — network-first. Never caches API or login responses.
+const CACHE = 'otp-v5';
+const ASSETS = ['/', '/style.css?v=4', '/app.js?v=4', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
-// Solo se guardan respuestas buenas y que no sean un redirect al login
 function cacheable(res) {
   return res && res.ok && !res.redirected && res.type === 'basic';
 }
@@ -13,7 +12,7 @@ self.addEventListener('install', e => {
       try {
         const res = await fetch(url, { credentials: 'same-origin' });
         if (cacheable(res)) await c.put(url, res);
-      } catch { /* sin red: se llenará después */ }
+      } catch { /* offline: will fill later */ }
     })))
   );
   self.skipWaiting();
@@ -28,12 +27,18 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Tell all open tabs that a new version activated
+self.addEventListener('activate', () => {
+  self.clients.matchAll({ type: 'window' }).then(clients => {
+    clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' }));
+  });
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
-  // API, login y fotos: siempre a la red (datos privados / siempre frescos)
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/') ||
       url.pathname.startsWith('/login')) return;
 

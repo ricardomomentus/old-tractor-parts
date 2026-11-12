@@ -6,70 +6,73 @@ console.log(`[OTP] Modelo identificación: ${VISION_MODEL}`);
 console.log(`[OTP] Modelo verificación: ${VERIFY_MODEL}`);
 const TIMEOUT_MS = 90_000;
 
-const IDENTIFY_PROMPT = `Eres un experto en partes de tractor y equipo pesado antiguo (años 1940-1990). Tu trabajo es identificar piezas viejas — casi siempre verás la CAJA original, no la pieza suelta.
+const IDENTIFY_PROMPT = `You are an expert in vintage tractor and heavy equipment parts (1940s-1990s). These parts are for sale in the USA market (eBay, Facebook Marketplace). You will mostly see the ORIGINAL BOX, not the loose part.
 
-PASO 1 — LEE TODO LO VISIBLE EN LA ETIQUETA/CAJA:
-- Marca del fabricante de la pieza (Hepolite, Glacier, AE, Michigan, Clevite, Zollner, Mahle, Federal-Mogul, Perfect Circle, Sealed Power, etc.)
-- Número de parte impreso en la etiqueta
-- Números escritos a mano (pueden ser OEM o referencias internas)
-- Número OEM del tractor/motor (ej. Ford C9NN6211C)
-- Medida: STD, .010, .020, .030, etc.
-- Texto como "For Ford", "For John Deere", cantidad en la caja
-- Texto tachado con plumón o tapado con calcomanía — di qué se alcanza a leer y qué no
-- País de origen, "Made in England", "Bradford", etc.
+STEP 1 — READ EVERYTHING VISIBLE ON THE LABEL/BOX:
+- Part manufacturer brand (Hepolite, Glacier, AE, Michigan, Clevite, Zollner, Mahle, Federal-Mogul, Perfect Circle, Sealed Power, etc.)
+- Part number printed on the label
+- Handwritten numbers (may be OEM or internal references)
+- OEM number from the tractor/engine (e.g. Ford C9NN6211C)
+- Size: STD, .010, .020, .030, etc.
+- Text like "For Ford", "For John Deere", quantity in the box
+- Text crossed out with marker or covered by sticker — say what you can and cannot read
+- Country of origin, "Made in England", "Bradford", etc.
 
-PASO 2 — IDENTIFICA EL TIPO DE PIEZA:
-Basándote en lo que dice la etiqueta y la forma de la caja:
-- Metal de biela (rod bearing / con shell) — caja plana, a veces con dibujo de media luna
-- Metal de bancada (main bearing)
-- Camisa de cilindro (cylinder sleeve/liner) — caja larga y estrecha
-- Anillos de pistón (piston rings)
-- Pistón
-- Bujes (bushings)
-- Válvulas
-- Guías de válvula
-- Sellos, empaques, juntas
-- Otro (especificar)
+STEP 2 — IDENTIFY THE PART TYPE:
+Based on the label text and box shape:
+- Rod bearing (con shell) — flat box, sometimes with half-moon drawing
+- Main bearing
+- Cylinder sleeve/liner — long narrow box
+- Piston rings
+- Piston
+- Bushings
+- Valves
+- Valve guides
+- Seals, gaskets
+- Other (specify)
 
-PASO 3 — PISTAS DEL NÚMERO OEM (solo como referencia, sin confirmar):
-Los números Ford tienen un patrón: C9NN6211 → "6211" puede indicar metal de biela; "C9" podría ser 1969; "NN" podría ser línea de tractor. Esto es de memoria y NO está confirmado — ponlo como nota, nunca como dato seguro.
+STEP 3 — OEM NUMBER CLUES (reference only, unconfirmed):
+Ford numbers follow a pattern: C9NN6211 → "6211" may indicate rod bearing; "C9" could be 1969; "NN" could be tractor line. This is from memory and NOT confirmed — note it, never state as fact.
 
-REGLAS:
-- NO inventes a qué tractor o motor le queda si la etiqueta no lo dice claramente.
-- Si hay texto ilegible, tachado o tapado, dilo. No adivines lo que no se lee.
-- Si la marca del tractor/motor no aparece, deja el campo vacío.
-- Pon TODOS los números y textos que veas, aunque no sepas qué significan.
+RULES:
+- DO NOT guess which tractor/engine it fits if the label doesn't clearly say.
+- If text is illegible, crossed out, or covered, say so. Don't guess what you can't read.
+- If the tractor/engine brand is not shown, leave the field empty.
+- List ALL numbers and text you see, even if you don't know what they mean.
+- ALL text output must be in English. Part type must be in English.
+- The "custom_title" field is for eBay/Facebook USA listings: make it a clear, searchable product title in English (e.g. "Glacier B6495LC Rod Bearing Set Ford 5000 6600 STD"). Max 80 characters. Include brand, part number, part type, tractor brand/model, and size if available.
 
-Responde SOLO con JSON válido (sin markdown, sin \`\`\`):
+Respond ONLY with valid JSON (no markdown, no \`\`\`):
 {
-  "part_brand": "marca del fabricante de la pieza (Hepolite, Glacier, etc.)",
-  "tractor_brand": "marca del tractor/motor si se indica (Ford, John Deere, etc.) o vacío",
-  "tractor_model": "modelo o motor si se indica, o vacío",
-  "part_type_es": "tipo de pieza en español",
-  "part_type_en": "tipo de pieza en inglés",
-  "part_number": "número de parte principal de la etiqueta",
-  "oem_number": "número OEM si se ve (ej. C9NN6211C), o vacío",
-  "handwritten_numbers": "números escritos a mano, o vacío",
-  "measurement": "medida: STD, .020, etc., o vacío",
-  "quantity": "cantidad indicada en la caja, o vacío",
-  "condition": "New Old Stock, Used, o lo que se vea",
-  "confidence": "Alta, Media, o Baja",
-  "all_visible_text": "TODOS los textos y números visibles en la etiqueta/caja, incluyendo los que no sabes qué son",
-  "notes": "observaciones: texto tachado, calcomanías, estado de la caja, pistas del OEM sin confirmar"
+  "part_brand": "part manufacturer brand (Hepolite, Glacier, etc.)",
+  "tractor_brand": "tractor/engine brand if shown (Ford, John Deere, etc.) or empty",
+  "tractor_model": "model or engine if shown, or empty",
+  "part_type_es": "part type in Spanish",
+  "part_type_en": "part type in English",
+  "part_number": "main part number from the label",
+  "oem_number": "OEM number if visible (e.g. C9NN6211C), or empty",
+  "handwritten_numbers": "handwritten numbers, or empty",
+  "measurement": "size: STD, .020, etc., or empty",
+  "quantity": "quantity shown on box, or empty",
+  "condition": "New Old Stock, Used, or what you see",
+  "confidence": "High, Medium, or Low",
+  "all_visible_text": "ALL visible text and numbers on the label/box, including ones you don't recognize",
+  "custom_title": "eBay/FB listing title in English, max 80 chars, brand + part# + type + tractor + size",
+  "notes": "observations: crossed-out text, stickers, box condition, unconfirmed OEM clues"
 }`;
 
-const VERIFY_PROMPT = `Eres un segundo experto verificando la identificación de una pieza de tractor/equipo pesado antiguo. Otro experto ya la identificó. Tu trabajo es verificar de forma INDEPENDIENTE mirando las mismas fotos.
+const VERIFY_PROMPT = `You are a second expert verifying the identification of a vintage tractor/heavy equipment part. Another expert already identified it. Your job is to verify INDEPENDENTLY by looking at the same photos.
 
-Lee todo el texto visible en la caja/etiqueta y responde SOLO con JSON válido (sin markdown):
+Read all visible text on the box/label and respond ONLY with valid JSON (no markdown):
 {
-  "part_brand": "marca del fabricante",
-  "tractor_brand": "marca del tractor/motor o vacío",
-  "part_type_en": "tipo de pieza en inglés",
-  "part_number": "número de parte principal",
-  "oem_number": "número OEM o vacío",
-  "measurement": "medida o vacío",
-  "confidence": "Alta, Media, o Baja",
-  "all_visible_text": "todo lo que se lee en la etiqueta"
+  "part_brand": "manufacturer brand",
+  "tractor_brand": "tractor/engine brand or empty",
+  "part_type_en": "part type in English",
+  "part_number": "main part number",
+  "oem_number": "OEM number or empty",
+  "measurement": "size or empty",
+  "confidence": "High, Medium, or Low",
+  "all_visible_text": "everything readable on the label"
 }`;
 
 async function callModel(model, prompt, imagePaths) {
@@ -227,7 +230,7 @@ export async function identifyPart(imagePaths) {
   }
 
   // Paso 3: Google Vision — solo si no coinciden, confianza baja, o no se identificó
-  const confLow = ['baja', 'low'].includes(String(primary.confidence).toLowerCase());
+  const confLow = ['baja', 'low'].includes(String(primary.confidence).toLowerCase().trim());
   const noId = !primary.part_brand && !primary.part_number;
   let visionData = null;
   if (!comparison.match || confLow || noId) {

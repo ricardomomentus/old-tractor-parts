@@ -671,6 +671,26 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.6); }
 .detail-add-photos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 16px; }
 .photo-count-hint { font-size: 13px; color: var(--text-muted); }
 
+/* UPDATE BANNER */
+.update-banner {
+  background: #f59e0b;
+  color: #1a1a1a;
+  text-align: center;
+  padding: 14px 16px;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  animation: banner-pulse 2s ease-in-out infinite;
+}
+@keyframes banner-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
 /* RESPONSIVE — mobile */
 @media (max-width: 480px) {
   .filter-chips { flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; overflow-x: visible; }

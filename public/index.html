@@ -11,9 +11,12 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="stylesheet" href="/style.css?v=3">
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body>
+  <div id="update-banner" class="update-banner" hidden onclick="location.reload()">
+    New Version Available — Tap Here to Upgrade
+  </div>
   <header>
     <h1>Old Tractor Parts</h1>
     <button class="btn-logout" id="logout-btn" title="Log out">Log out</button>
@@ -93,6 +96,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>
