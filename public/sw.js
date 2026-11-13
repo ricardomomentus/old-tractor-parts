@@ -1,6 +1,6 @@
 // Service worker — network-first. Never caches API or login responses.
-const CACHE = 'otp-v5';
-const ASSETS = ['/', '/style.css?v=4', '/app.js?v=4', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+const CACHE = 'otp-v6';
+const ASSETS = ['/', '/style.css?v=5', '/app.js?v=5', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
 function cacheable(res) {
   return res && res.ok && !res.redirected && res.type === 'basic';

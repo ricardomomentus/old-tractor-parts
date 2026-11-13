@@ -229,7 +229,7 @@ function renderList() {
 
 function partCard(p) {
   const title = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Unidentified');
-  const subtitle = [p.part_type_es || p.part_type_en, p.tractor_brand].filter(hasValue).join(' — ');
+  const subtitle = [p.part_type_en || p.part_type_es, p.tractor_brand].filter(hasValue).join(' — ');
   const st = STATUS_INFO[p.status] || STATUS_INFO.pending;
   const thumbSrc = p.photos?.[0]?.thumbnail || p.photos?.[0]?.filename;
   const thumb = thumbSrc
@@ -639,7 +639,7 @@ function renderDetail(p) {
     </div>` : '';
 
   const partTitle = hasValue(p.custom_title) ? p.custom_title : ([p.part_brand, p.part_number].filter(hasValue).join(' ') || 'Unidentified');
-  const partSubtitle = p.part_type_es || p.part_type_en || '';
+  const partSubtitle = p.part_type_en || p.part_type_es || '';
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-top">

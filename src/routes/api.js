@@ -488,6 +488,31 @@ export function apiRouter(db) {
     res.status(201).json({ imported: imported.length, ids: imported });
   });
 
+  router.post('/migrate-titles', (req, res) => {
+    const parts = db.prepare('SELECT * FROM parts').all();
+    let titlesUpdated = 0;
+    let postsUpdated = 0;
+    for (const p of parts) {
+      if (!isSet(p.custom_title)) {
+        const pieces = [p.part_number, p.part_type_en || p.part_type_es, p.part_brand, p.tractor_brand, p.tractor_model, p.measurement].filter(v => isSet(v));
+        if (pieces.length) {
+          const title = pieces.join(' - ').slice(0, 80);
+          db.prepare('UPDATE parts SET custom_title = ? WHERE id = ?').run(title, p.id);
+          p.custom_title = title;
+          titlesUpdated++;
+        }
+      }
+      if (p.status && p.status !== 'pending') {
+        const fb = generateFbPost(p);
+        const eb = generateEbayPost(p);
+        db.prepare('UPDATE parts SET fb_title = ?, fb_description = ?, ebay_title = ?, ebay_description = ? WHERE id = ?')
+          .run(fb.title, fb.description, eb.title, eb.description, p.id);
+        postsUpdated++;
+      }
+    }
+    res.json({ total: parts.length, titlesUpdated, postsUpdated });
+  });
+
   router.get('/stats', (req, res) => {
     const counts = { pending: 0, approved: 0, posted: 0, sold: 0 };
     for (const row of db.prepare('SELECT status, COUNT(*) AS n FROM parts GROUP BY status').all()) {
